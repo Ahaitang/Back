@@ -24,14 +24,15 @@ public class PatientController {
     public Result<PageResult<Patient>> list(PageRequest request,
                                             @RequestHeader(value = "X-User-Role", required = false) String role,
                                             @RequestHeader(value = "X-User-Id", required = false) Long userId) {
-        // 如果是医生角色，只能看到自己的患者
-        if ("doctor".equals(role) && userId != null) {
+        // 如果是医生角色且userId有效，只能看到自己的患者
+        if ("doctor".equals(role) && userId != null && userId > 0) {
             return Result.success(patientService.getListByDoctorId(userId, request));
         }
-        // 如果是患者角色，只能看到自己的信息
-        if ("patient".equals(role) && userId != null) {
+        // 如果是患者角色且userId有效，只能看到自己的信息
+        if ("patient".equals(role) && userId != null && userId > 0) {
             return Result.success(patientService.getByIdAsPageResult(userId));
         }
+        // 管理员或其他情况，返回所有患者
         return Result.success(patientService.getList(request));
     }
 
