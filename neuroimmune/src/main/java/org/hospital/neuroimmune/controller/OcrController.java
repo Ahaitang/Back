@@ -53,4 +53,22 @@ public class OcrController {
         Map<String, Object> result = ocrService.analyzeImageByUrl(url);
         return Result.success(result);
     }
+
+    /**
+     * 解析外院医疗资料（Mock版本）
+     * 上传图片后返回示例解析内容
+     */
+    @PostMapping("/parse-medical")
+    public Result<Map<String, Object>> parseMedicalRecord(@RequestBody Map<String, Object> request) {
+        // Mock 返回示例数据
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("content", "【外院就诊资料解析结果】\n\n" +
+                "就诊日期：2024年3月15日\n" +
+                "主诉：头痛伴视物模糊3天\n" +
+                "现病史：患者3天前无明显诱因出现头痛，呈持续性胀痛，伴视物模糊，无恶心呕吐，无肢体无力。\n" +
+                "诊断：偏头痛\n" +
+                "建议：注意休息，避免过度劳累，定期复查。\n\n" +
+                "（注：此为演示数据，请根据实际情况修改）");
+        return Result.success(result);
+    }
 }
