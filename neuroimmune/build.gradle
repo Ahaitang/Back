@@ -40,6 +40,8 @@ dependencies {
 
     // MinIO 文件存储
     implementation 'io.minio:minio:8.5.7'
+    // MinIO 需要较新版本的 OkHttp
+    implementation 'com.squareup.okhttp3:okhttp:4.10.0'
 
     // 阿里云图像识别SDK (需要手动安装或使用阿里云私有仓库)
     // 如需启用OCR功能，请在本地安装阿里云SDK或配置阿里云私有Maven仓库
