@@ -14,12 +14,13 @@
         <result column="date" property="date"/>
         <result column="content" property="content"/>
         <result column="attachments" property="attachments"/>
+        <result column="notes" property="notes"/>
         <result column="create_time" property="createTime"/>
     </resultMap>
 
     <sql id="Base_Column_List">
         id, patient_id, patient_name, type, diagnosis, hospital, department,
-        doctor_name, date, content, attachments, create_time
+        doctor_name, date, content, attachments, notes, create_time
     </sql>
 
     <select id="selectList" resultMap="BaseResultMap">
@@ -73,7 +74,7 @@
 
     <select id="selectListByDoctorId" resultMap="BaseResultMap">
         SELECT mr.id, mr.patient_id, mr.patient_name, mr.type, mr.diagnosis, mr.hospital,
-               mr.department, mr.doctor_name, mr.date, mr.content, mr.attachments, mr.create_time
+               mr.department, mr.doctor_name, mr.date, mr.content, mr.attachments, mr.notes, mr.create_time
         FROM medical_record mr
         INNER JOIN patient p ON mr.patient_id = p.id
         WHERE p.doctor_id = #{doctorId}
