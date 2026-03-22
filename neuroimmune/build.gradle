@@ -38,6 +38,9 @@ dependencies {
     implementation 'org.apache.poi:poi:5.2.3'
     implementation 'org.apache.poi:poi-ooxml:5.2.3'
 
+    // MinIO 文件存储
+    implementation 'io.minio:minio:8.5.7'
+
     // 阿里云图像识别SDK (需要手动安装或使用阿里云私有仓库)
     // 如需启用OCR功能，请在本地安装阿里云SDK或配置阿里云私有Maven仓库
     // implementation 'com.aliyun:ocr-api20200507:xxx'
