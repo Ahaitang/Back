@@ -28,7 +28,11 @@ public class Medication {
     private String unit;
     private String frequency;
     private String route;
-    private String duration;
+    private String duration;  // 服用时间段，如 "1个月"、"3个月"、"7天"
+
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDateTime endDate;  // 结束日期，根据 duration 自动计算
+
     private String notes;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

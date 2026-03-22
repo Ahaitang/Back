@@ -15,13 +15,14 @@
         <result column="frequency" property="frequency"/>
         <result column="route" property="route"/>
         <result column="duration" property="duration"/>
+        <result column="end_date" property="endDate"/>
         <result column="notes" property="notes"/>
         <result column="create_time" property="createTime"/>
     </resultMap>
 
     <sql id="Base_Column_List">
         id, patient_id, patient_name, doctor_id, doctor_name, medication_name, date,
-        dosage, unit, frequency, route, duration, notes, create_time
+        dosage, unit, frequency, route, duration, end_date, notes, create_time
     </sql>
 
     <select id="selectList" resultMap="BaseResultMap">
