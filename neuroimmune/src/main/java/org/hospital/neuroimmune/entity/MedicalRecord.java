@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -24,7 +25,7 @@ public class MedicalRecord {
     private String doctorName;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDateTime date;
+    private LocalDate date;
 
     private String content;
     private String attachments;
