@@ -59,6 +59,12 @@ minio:
   secret-key: Abc123456
   bucket-name: neuroimmune
 
+# OCR API 配置（调用百度OCR API服务）
+ocr:
+  api:
+    base-url: http://localhost:8081/api/ocr
+    timeout: 60000
+
 # 文件上传路径（备用）
 file:
   upload:

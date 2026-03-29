@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -28,6 +29,15 @@ public class OcrController {
     }
 
     /**
+     * 高精度文字识别
+     */
+    @PostMapping("/accurate")
+    public Result<Map<String, Object>> recognizeAccurate(@RequestParam("file") MultipartFile file) {
+        Map<String, Object> result = ocrService.recognizeGeneralText(file);
+        return Result.success(result);
+    }
+
+    /**
      * 医疗报告识别
      */
     @PostMapping("/medical-report")
@@ -40,7 +50,9 @@ public class OcrController {
      * 身份证识别
      */
     @PostMapping("/idcard")
-    public Result<Map<String, Object>> recognizeIdCard(@RequestParam("file") MultipartFile file) {
+    public Result<Map<String, Object>> recognizeIdCard(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "side", defaultValue = "front") String side) {
         Map<String, Object> result = ocrService.recognizeIdCard(file);
         return Result.success(result);
     }
@@ -55,20 +67,22 @@ public class OcrController {
     }
 
     /**
-     * 解析外院医疗资料（Mock版本）
-     * 上传图片后返回示例解析内容
+     * 解析外院医疗资料
+     * 接收图片URL列表，调用OCR API进行批量识别
      */
     @PostMapping("/parse-medical")
     public Result<Map<String, Object>> parseMedicalRecord(@RequestBody Map<String, Object> request) {
-        // Mock 返回示例数据
-        Map<String, Object> result = new java.util.HashMap<>();
-        result.put("content", "【外院就诊资料解析结果】\n\n" +
-                "就诊日期：2024年3月15日\n" +
-                "主诉：头痛伴视物模糊3天\n" +
-                "现病史：患者3天前无明显诱因出现头痛，呈持续性胀痛，伴视物模糊，无恶心呕吐，无肢体无力。\n" +
-                "诊断：偏头痛\n" +
-                "建议：注意休息，避免过度劳累，定期复查。\n\n" +
-                "（注：此为演示数据，请根据实际情况修改）");
+        List<String> images = (List<String>) request.get("images");
+
+        if (images == null || images.isEmpty()) {
+            Map<String, Object> errorResult = new java.util.HashMap<>();
+            errorResult.put("success", false);
+            errorResult.put("errorMsg", "未提供图片");
+            return Result.success(errorResult);
+        }
+
+        // 调用OCR服务批量识别图片
+        Map<String, Object> result = ocrService.recognizeImagesByUrl(images);
         return Result.success(result);
     }
 }

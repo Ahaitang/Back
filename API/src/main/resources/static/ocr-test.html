@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>百度OCR API 测试页面</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .api-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+
+        .api-btn {
+            padding: 12px 8px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+            color: #333;
+            text-align: center;
+        }
+
+        .api-btn:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .api-btn.active {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .upload-section {
+            border: 2px dashed #e0e0e0;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 20px;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .upload-section:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .upload-section.dragover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            color: #ccc;
+            margin-bottom: 10px;
+        }
+
+        .upload-text {
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .preview-section {
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .preview-section.show {
+            display: block;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+            margin: 10px auto;
+            display: block;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .file-name {
+            color: #666;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .params-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .params-section.show {
+            display: block;
+        }
+
+        .param-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .param-label {
+            width: 80px;
+            color: #666;
+        }
+
+        .param-input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            flex: 1;
+        }
+
+        .param-select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            flex: 1;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 20px;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result-section {
+            display: none;
+        }
+
+        .result-section.show {
+            display: block;
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .result-status {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+
+        .result-status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .result-status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .result-time {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .result-content {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            overflow-x: auto;
+        }
+
+        .result-text {
+            white-space: pre-wrap;
+            word-break: break-all;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .result-data {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .clear-btn {
+            padding: 8px 16px;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-left: auto;
+        }
+
+        .clear-btn:hover {
+            background: #e9ecef;
+        }
+
+        .prompt-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin-top: 10px;
+            resize: vertical;
+            min-height: 60px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>百度OCR API 测试</h1>
+        <p class="subtitle">服务地址: http://localhost:8081/api/ocr</p>
+
+        <!-- API选择 -->
+        <div class="api-grid">
+            <button class="api-btn active" data-api="general">通用文字</button>
+            <button class="api-btn" data-api="accurate">高精度文字</button>
+            <button class="api-btn" data-api="paddle">PaddleOCR</button>
+            <button class="api-btn" data-api="idcard">身份证</button>
+            <button class="api-btn" data-api="bankcard">银行卡</button>
+            <button class="api-btn" data-api="driving">驾驶证</button>
+            <button class="api-btn" data-api="vehicle">行驶证</button>
+            <button class="api-btn" data-api="medical-invoice">医疗发票</button>
+        </div>
+
+        <!-- 上传区域 -->
+        <div class="upload-section" id="uploadSection">
+            <div class="upload-icon">📁</div>
+            <p class="upload-text">点击或拖拽图片到此处上传</p>
+            <p style="color: #999; font-size: 12px;">支持 JPG、PNG、BMP 格式，最大 10MB</p>
+            <input type="file" class="file-input" id="fileInput" accept="image/*">
+        </div>
+
+        <!-- 图片预览 -->
+        <div class="preview-section" id="previewSection">
+            <img class="preview-image" id="previewImage">
+            <p class="file-name" id="fileName"></p>
+        </div>
+
+        <!-- 特殊参数 -->
+        <div class="params-section" id="paramsSection">
+            <div class="param-row" id="sideParam" style="display: none;">
+                <span class="param-label">身份证面:</span>
+                <select class="param-select" id="sideSelect">
+                    <option value="front">正面（有照片）</option>
+                    <option value="back">反面（有国徽）</option>
+                </select>
+            </div>
+            <div id="promptParam" style="display: none;">
+                <span class="param-label">识别提示:</span>
+                <textarea class="prompt-input" id="promptInput" placeholder="输入识别提示词，指导OCR识别特定内容..."></textarea>
+            </div>
+        </div>
+
+        <!-- 提交按钮 -->
+        <button class="submit-btn" id="submitBtn" disabled>开始识别</button>
+
+        <!-- 加载状态 -->
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>正在识别中...</p>
+        </div>
+
+        <!-- 结果展示 -->
+        <div class="result-section" id="resultSection">
+            <div class="result-header">
+                <span class="result-status" id="resultStatus"></span>
+                <span class="result-time" id="resultTime"></span>
+                <button class="clear-btn" id="clearBtn">清除结果</button>
+            </div>
+            <div class="result-content">
+                <p class="result-text" id="resultText"></p>
+            </div>
+            <h4 style="margin: 15px 0 10px; color: #666;">完整返回数据:</h4>
+            <pre class="result-data" id="resultData"></pre>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8081/api/ocr';
+
+        let currentApi = 'general';
+        let currentFile = null;
+
+        // API按钮点击
+        document.querySelectorAll('.api-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.api-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentApi = btn.dataset.api;
+                updateParams();
+            });
+        });
+
+        // 更新参数显示
+        function updateParams() {
+            const paramsSection = document.getElementById('paramsSection');
+            const sideParam = document.getElementById('sideParam');
+            const promptParam = document.getElementById('promptParam');
+
+            paramsSection.classList.add('show');
+
+            if (currentApi === 'idcard') {
+                sideParam.style.display = 'flex';
+                promptParam.style.display = 'none';
+            } else if (currentApi === 'paddle') {
+                sideParam.style.display = 'none';
+                promptParam.style.display = 'block';
+            } else {
+                sideParam.style.display = 'none';
+                promptParam.style.display = 'none';
+            }
+        }
+
+        // 上传区域点击
+        const uploadSection = document.getElementById('uploadSection');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadSection.addEventListener('click', () => fileInput.click());
+
+        // 拖拽上传
+        uploadSection.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadSection.classList.add('dragover');
+        });
+
+        uploadSection.addEventListener('dragleave', () => {
+            uploadSection.classList.remove('dragover');
+        });
+
+        uploadSection.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadSection.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        // 文件选择
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        // 处理文件
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('请选择图片文件');
+                return;
+            }
+
+            if (file.size > 10 * 1024 * 1024) {
+                alert('文件大小不能超过10MB');
+                return;
+            }
+
+            currentFile = file;
+
+            // 显示预览
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('previewImage').src = e.target.result;
+                document.getElementById('fileName').textContent = file.name;
+                document.getElementById('previewSection').classList.add('show');
+                document.getElementById('submitBtn').disabled = false;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 提交识别
+        document.getElementById('submitBtn').addEventListener('click', async () => {
+            if (!currentFile) return;
+
+            const submitBtn = document.getElementById('submitBtn');
+            const loading = document.getElementById('loading');
+            const resultSection = document.getElementById('resultSection');
+
+            submitBtn.disabled = true;
+            loading.classList.add('show');
+            resultSection.classList.remove('show');
+
+            const formData = new FormData();
+            formData.append('file', currentFile);
+
+            let url = `${API_BASE}/${currentApi}`;
+
+            if (currentApi === 'idcard') {
+                formData.append('side', document.getElementById('sideSelect').value);
+            } else if (currentApi === 'paddle') {
+                const prompt = document.getElementById('promptInput').value;
+                if (prompt) {
+                    formData.append('prompt', prompt);
+                }
+            }
+
+            const startTime = Date.now();
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const endTime = Date.now();
+                const duration = endTime - startTime;
+
+                const result = await response.json();
+
+                showResult(result, duration);
+            } catch (error) {
+                showResult({
+                    code: 0,
+                    msg: '请求失败: ' + error.message,
+                    data: null
+                }, Date.now() - startTime);
+            }
+
+            loading.classList.remove('show');
+            submitBtn.disabled = false;
+        });
+
+        // 显示结果
+        function showResult(result, duration) {
+            const resultSection = document.getElementById('resultSection');
+            const resultStatus = document.getElementById('resultStatus');
+            const resultTime = document.getElementById('resultTime');
+            const resultText = document.getElementById('resultText');
+            const resultData = document.getElementById('resultData');
+
+            resultSection.classList.add('show');
+
+            if (result.code === 1 && result.data && result.data.success) {
+                resultStatus.textContent = '识别成功';
+                resultStatus.className = 'result-status success';
+
+                // 显示文字内容
+                if (result.data.fullText) {
+                    resultText.textContent = result.data.fullText;
+                } else if (result.data.words && result.data.words.length > 0) {
+                    resultText.textContent = result.data.words.join('\n');
+                } else if (result.data.data) {
+                    resultText.textContent = formatData(result.data.data);
+                } else {
+                    resultText.textContent = '无文字内容';
+                }
+            } else {
+                resultStatus.textContent = '识别失败';
+                resultStatus.className = 'result-status error';
+                resultText.textContent = result.msg || (result.data && result.data.errorMsg) || '未知错误';
+            }
+
+            resultTime.textContent = `耗时: ${duration}ms`;
+            resultData.textContent = JSON.stringify(result, null, 2);
+        }
+
+        // 格式化数据对象
+        function formatData(data) {
+            if (typeof data === 'object') {
+                return Object.entries(data)
+                    .map(([key, value]) => `${key}: ${value}`)
+                    .join('\n');
+            }
+            return JSON.stringify(data, null, 2);
+        }
+
+        // 清除结果
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            document.getElementById('resultSection').classList.remove('show');
+        });
+
+        // 初始化
+        updateParams();
+    </script>
+</body>
+</html>
