@@ -36,3 +36,25 @@ VALUES ('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH',
 
 -- 提示
 SELECT '迁移完成！管理员账号: admin / 123456' AS result;
+
+ALTER TABLE medical_record ADD COLUMN notes VARCHAR(500) COMMENT '备注' AFTER attachments;
+
+
+CREATE TABLE `disease_episode` (
+                                   `id` bigint NOT NULL AUTO_INCREMENT,
+                                   `patient_id` bigint DEFAULT NULL,
+                                   `patient_name` varchar(100) DEFAULT NULL,
+                                   `episode_number` int DEFAULT NULL COMMENT '发作次数',
+                                   `episode_date` date DEFAULT NULL COMMENT '发作时间',
+                                   `chief_complaint` varchar(500) DEFAULT NULL COMMENT '主诉',
+                                   `symptoms` varchar(1000) DEFAULT NULL COMMENT '症状',
+                                   `disease_progress` text COMMENT '病情变化过程',
+                                   `treatment_process` text COMMENT '诊治经过',
+                                   `diagnosis` varchar(500) DEFAULT NULL COMMENT '诊断结果',
+                                   `hospital` varchar(200) DEFAULT NULL COMMENT '就诊医院',
+                                   `department` varchar(100) DEFAULT NULL COMMENT '科室',
+                                   `notes` text COMMENT '备注',
+                                   `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+                                   PRIMARY KEY (`id`),
+                                   KEY `idx_patient_id` (`patient_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='疾病发作记录';

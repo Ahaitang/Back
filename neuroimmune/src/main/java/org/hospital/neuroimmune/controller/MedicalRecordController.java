@@ -27,6 +27,12 @@ public class MedicalRecordController {
             @RequestHeader(value = "X-User-Role", required = false) String role,
             @RequestHeader(value = "X-User-Id", required = false) Long userId) {
 
+        // 如果指定了patientId，按patientId查询
+        if (patientId != null) {
+            request.setPatientId(patientId);
+            return Result.success(medicalRecordService.getList(request));
+        }
+
         // 医生角色只看自己患者的病历
         if ("doctor".equals(role) && userId != null) {
             return Result.success(medicalRecordService.getListByDoctorId(userId, request));
@@ -35,8 +41,6 @@ public class MedicalRecordController {
         // 患者角色只看自己的病历
         if ("patient".equals(role) && userId != null) {
             request.setPatientId(userId);
-        } else if (patientId != null) {
-            request.setPatientId(patientId);
         }
 
         return Result.success(medicalRecordService.getList(request));

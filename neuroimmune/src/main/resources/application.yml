@@ -54,7 +54,7 @@ aliyun:
 
 # MinIO 配置
 minio:
-  endpoint: http://101.201.30.29:9000
+  endpoint: http://101.201.30.29:9100
   access-key: Abc123456
   secret-key: Abc123456
   bucket-name: neuroimmune
