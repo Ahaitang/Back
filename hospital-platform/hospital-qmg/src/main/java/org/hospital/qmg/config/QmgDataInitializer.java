@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
  */
 @Slf4j
 @Component
-public class DataInitializer implements CommandLineRunner {
+public class QmgDataInitializer implements CommandLineRunner {
 
     @Autowired
     private DoctorMapper doctorMapper;

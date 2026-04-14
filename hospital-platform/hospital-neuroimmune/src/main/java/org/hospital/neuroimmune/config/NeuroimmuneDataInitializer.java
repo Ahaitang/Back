@@ -13,9 +13,9 @@ import org.springframework.stereotype.Component;
  * 系统启动初始化
  */
 @Component
-public class DataInitializer implements CommandLineRunner {
+public class NeuroimmuneDataInitializer implements CommandLineRunner {
 
-    private static final Logger logger = LoggerFactory.getLogger(DataInitializer.class);
+    private static final Logger logger = LoggerFactory.getLogger(NeuroimmuneDataInitializer.class);
 
     @Autowired
     private AdminMapper adminMapper;
