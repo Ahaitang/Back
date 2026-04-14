@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.hospital.neuroimmune.mapper.DoctorMapper">
+
+    <resultMap id="BaseResultMap" type="org.hospital.neuroimmune.entity.Doctor">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="title" property="title"/>
+        <result column="department" property="department"/>
+        <result column="hospital" property="hospital"/>
+        <result column="phone" property="phone"/>
+        <result column="password" property="password"/>
+        <result column="avatar" property="avatar"/>
+        <result column="patient_count" property="patientCount"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, name, title, department, hospital, phone, password, avatar, patient_count, create_time
+    </sql>
+
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM doctor
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (name LIKE CONCAT('%', #{keyword}, '%')
+                     OR phone LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="department != null and department != ''">
+                AND department = #{department}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <select id="selectCount" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM doctor
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (name LIKE CONCAT('%', #{keyword}, '%')
+                     OR phone LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="department != null and department != ''">
+                AND department = #{department}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectByPhone" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM doctor WHERE phone = #{phone}
+    </select>
+
+</mapper>

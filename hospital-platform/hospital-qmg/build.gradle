@@ -1,0 +1,9 @@
+dependencies {
+    implementation project(':hospital-common')
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'com.baomidou:mybatis-plus-boot-starter:3.5.3.1'
+    implementation 'org.springframework.boot:spring-boot-starter-cache'
+    implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity5'
+    runtimeOnly 'com.mysql:mysql-connector-j'
+}

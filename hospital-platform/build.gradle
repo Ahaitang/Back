@@ -1,0 +1,30 @@
+plugins {
+    id 'org.springframework.boot' version '2.6.13' apply false
+    id 'io.spring.dependency-management' version '1.0.15.RELEASE' apply false
+    id 'java'
+}
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'io.spring.dependency-management'
+
+    group = 'org.hospital'
+    version = '1.0.0-SNAPSHOT'
+    sourceCompatibility = '1.8'
+
+    repositories {
+        mavenCentral()
+    }
+
+    dependencyManagement {
+        imports {
+            mavenBom "org.springframework.boot:spring-boot-dependencies:2.6.13"
+        }
+    }
+
+    dependencies {
+        compileOnly 'org.projectlombok:lombok'
+        annotationProcessor 'org.projectlombok:lombok'
+        testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    }
+}

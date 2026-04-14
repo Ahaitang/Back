@@ -1,0 +1,7 @@
+dependencies {
+    implementation project(':hospital-common')
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation('com.baidu.aip:java-sdk:4.16.18') {
+        exclude group: 'org.slf4j', module: 'slf4j-simple'
+    }
+}

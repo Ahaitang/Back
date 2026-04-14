@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.hospital.qmg.mapper.DoctorMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="doctorResultMap" type="org.hospital.qmg.entity.Doctor">
+        <id property="id" column="id"/>
+        <result property="employeeNumber" column="employee_number"/>
+        <result property="username" column="username"/>
+        <result property="password" column="password"/>
+        <result property="level" column="level"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <!-- 根据用户名查询 -->
+    <select id="findByUsername" parameterType="String" resultMap="doctorResultMap">
+        SELECT id, employee_number, username, password, level, create_time, update_time
+        FROM doctor
+        WHERE username = #{username}
+    </select>
+
+    <!-- 根据工号查询 -->
+    <select id="findByEmployeeNumber" parameterType="String" resultMap="doctorResultMap">
+        SELECT id, employee_number, username, password, level, create_time, update_time
+        FROM doctor
+        WHERE employee_number = #{employeeNumber}
+    </select>
+
+    <!-- 根据ID查询 -->
+    <select id="findById" parameterType="Integer" resultMap="doctorResultMap">
+        SELECT id, employee_number, username, password, level, create_time, update_time
+        FROM doctor
+        WHERE id = #{id}
+    </select>
+
+    <!-- 查询所有医生 -->
+    <select id="findAll" resultMap="doctorResultMap">
+        SELECT id, employee_number, username, password, level, create_time, update_time
+        FROM doctor
+        ORDER BY level ASC, create_time DESC
+    </select>
+
+    <!-- 新增医生 -->
+    <insert id="insert" parameterType="org.hospital.qmg.entity.Doctor" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO doctor (employee_number, username, password, level, create_time, update_time)
+        VALUES (#{employeeNumber}, #{username}, #{password}, #{level}, #{createTime}, #{updateTime})
+    </insert>
+
+    <!-- 更新医生信息 -->
+    <update id="update" parameterType="org.hospital.qmg.entity.Doctor">
+        UPDATE doctor
+        SET employee_number = #{employeeNumber},
+            username = #{username},
+            password = #{password},
+            level = #{level},
+            update_time = #{updateTime}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 批量插入医生 -->
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO doctor (employee_number, username, password, level, create_time, update_time)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.employeeNumber}, #{item.username}, #{item.password}, #{item.level}, #{item.createTime}, #{item.updateTime})
+        </foreach>
+    </insert>
+
+
+</mapper>

@@ -1,0 +1,7 @@
+rootProject.name = 'hospital-platform'
+
+include 'hospital-common'
+include 'hospital-qmg'
+include 'hospital-neuroimmune'
+include 'hospital-ocr'
+include 'hospital-web'

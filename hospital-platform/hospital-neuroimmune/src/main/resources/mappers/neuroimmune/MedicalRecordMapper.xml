@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.hospital.neuroimmune.mapper.MedicalRecordMapper">
+
+    <resultMap id="BaseResultMap" type="org.hospital.neuroimmune.entity.MedicalRecord">
+        <id column="id" property="id"/>
+        <result column="patient_id" property="patientId"/>
+        <result column="patient_name" property="patientName"/>
+        <result column="type" property="type"/>
+        <result column="diagnosis" property="diagnosis"/>
+        <result column="hospital" property="hospital"/>
+        <result column="department" property="department"/>
+        <result column="doctor_name" property="doctorName"/>
+        <result column="date" property="date"/>
+        <result column="content" property="content"/>
+        <result column="attachments" property="attachments"/>
+        <result column="notes" property="notes"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, patient_id, patient_name, type, diagnosis, hospital, department,
+        doctor_name, date, content, attachments, notes, create_time
+    </sql>
+
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM medical_record
+        <where>
+            <if test="patientId != null">
+                AND patient_id = #{patientId}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (patient_name LIKE CONCAT('%', #{keyword}, '%')
+                     OR diagnosis LIKE CONCAT('%', #{keyword}, '%')
+                     OR hospital LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="type != null and type != ''">
+                AND type = #{type}
+            </if>
+            <if test="startDate != null and startDate != ''">
+                AND date &gt;= #{startDate}
+            </if>
+            <if test="endDate != null and endDate != ''">
+                AND date &lt;= #{endDate}
+            </if>
+        </where>
+        ORDER BY date DESC, create_time DESC
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <select id="selectCount" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM medical_record
+        <where>
+            <if test="patientId != null">
+                AND patient_id = #{patientId}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (patient_name LIKE CONCAT('%', #{keyword}, '%')
+                     OR diagnosis LIKE CONCAT('%', #{keyword}, '%')
+                     OR hospital LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="type != null and type != ''">
+                AND type = #{type}
+            </if>
+            <if test="startDate != null and startDate != ''">
+                AND date &gt;= #{startDate}
+            </if>
+            <if test="endDate != null and endDate != ''">
+                AND date &lt;= #{endDate}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectListByDoctorId" resultMap="BaseResultMap">
+        SELECT mr.id, mr.patient_id, mr.patient_name, mr.type, mr.diagnosis, mr.hospital,
+               mr.department, mr.doctor_name, mr.date, mr.content, mr.attachments, mr.notes, mr.create_time
+        FROM medical_record mr
+        INNER JOIN patient p ON mr.patient_id = p.id
+        WHERE p.doctor_id = #{doctorId}
+        <if test="request.keyword != null and request.keyword != ''">
+            AND (mr.patient_name LIKE CONCAT('%', #{request.keyword}, '%')
+                 OR mr.diagnosis LIKE CONCAT('%', #{request.keyword}, '%')
+                 OR mr.hospital LIKE CONCAT('%', #{request.keyword}, '%'))
+        </if>
+        <if test="request.type != null and request.type != ''">
+            AND mr.type = #{request.type}
+        </if>
+        <if test="request.startDate != null and request.startDate != ''">
+            AND mr.date &gt;= #{request.startDate}
+        </if>
+        <if test="request.endDate != null and request.endDate != ''">
+            AND mr.date &lt;= #{request.endDate}
+        </if>
+        ORDER BY mr.date DESC, mr.create_time DESC
+        LIMIT #{request.pageSize} OFFSET #{request.offset}
+    </select>
+
+    <select id="selectCountByDoctorId" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM medical_record mr
+        INNER JOIN patient p ON mr.patient_id = p.id
+        WHERE p.doctor_id = #{doctorId}
+        <if test="request.keyword != null and request.keyword != ''">
+            AND (mr.patient_name LIKE CONCAT('%', #{request.keyword}, '%')
+                 OR mr.diagnosis LIKE CONCAT('%', #{request.keyword}, '%')
+                 OR mr.hospital LIKE CONCAT('%', #{request.keyword}, '%'))
+        </if>
+        <if test="request.type != null and request.type != ''">
+            AND mr.type = #{request.type}
+        </if>
+        <if test="request.startDate != null and request.startDate != ''">
+            AND mr.date &gt;= #{request.startDate}
+        </if>
+        <if test="request.endDate != null and request.endDate != ''">
+            AND mr.date &lt;= #{request.endDate}
+        </if>
+    </select>
+
+</mapper>

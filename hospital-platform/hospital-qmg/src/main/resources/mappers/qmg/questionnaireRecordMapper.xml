@@ -1,0 +1,305 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.hospital.qmg.mapper.QuestionnaireRecordMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="org.hospital.qmg.entity.QuestionnaireRecord">
+        <id column="id" property="id"/>
+        <result column="patient_id" property="patientId"/>
+        <result column="admission_number" property="admissionNumber"/>
+        <result column="assessment_date" property="assessmentDate"/>
+        <result column="selections" property="selections"/>
+        <result column="item_scores" property="itemScores"/>
+        <result column="total_score" property="totalScore"/>
+        <result column="category_scores" property="categoryScores"/>
+        <result column="doctor_id" property="doctorId"/>
+        <result column="doctor_username" property="doctorUsername"/>
+        <result column="modified_by" property="modifiedBy"/>
+        <result column="user_input_data" property="userInputData"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <!-- 联查患者信息（用于前端显示） -->
+        <result column="patient_name" property="patientName"/>
+        <result column="patient_gender" property="patientGender"/>
+        <result column="patient_phone" property="patientPhone"/>
+        <!-- 联查医生信息（用于前端显示） -->
+        <result column="doctor_name" property="doctorName"/>
+        <result column="doctor_employee_number" property="doctorEmployeeNumber"/>
+    </resultMap>
+
+    <!-- 新增问卷结果 -->
+    <insert id="insert" parameterType="org.hospital.qmg.entity.QuestionnaireRecord" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO questionnaire_record (
+            patient_id, admission_number, assessment_date,
+            selections, item_scores, total_score, category_scores,
+            doctor_id, doctor_username, modified_by, user_input_data, create_time, update_time
+        ) VALUES (
+            #{patientId}, #{admissionNumber}, #{assessmentDate},
+            #{selections}, #{itemScores}, #{totalScore}, #{categoryScores},
+            #{doctorId}, #{doctorUsername}, #{modifiedBy}, #{userInputData}, #{createTime}, #{updateTime}
+        )
+    </insert>
+
+    <!-- 根据ID查询 -->
+    <select id="findById" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT qr.*, 
+               p.name as patient_name, p.gender as patient_gender, p.phone as patient_phone,
+               d.username as doctor_name, d.employee_number as doctor_employee_number
+        FROM questionnaire_record qr
+        LEFT JOIN patient p ON qr.patient_id = p.id
+        LEFT JOIN doctor d ON qr.doctor_id = d.id
+        WHERE qr.id = #{id}
+    </select>
+
+    <!-- 根据患者ID查询所有问卷结果 -->
+    <select id="findByPatientId" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT qr.*, 
+               p.name as patient_name, p.gender as patient_gender, p.phone as patient_phone,
+               d.username as doctor_name, d.employee_number as doctor_employee_number
+        FROM questionnaire_record qr
+        LEFT JOIN patient p ON qr.patient_id = p.id
+        LEFT JOIN doctor d ON qr.doctor_id = d.id
+        WHERE qr.patient_id = #{patientId}
+        ORDER BY qr.assessment_date DESC, qr.create_time DESC
+    </select>
+
+    <!-- 根据患者ID和医生ID查询所有问卷结果（权限过滤） -->
+    <select id="findByPatientIdAndDoctorId" resultMap="BaseResultMap">
+        SELECT qr.*, 
+               p.name as patient_name, p.gender as patient_gender, p.phone as patient_phone,
+               d.username as doctor_name, d.employee_number as doctor_employee_number
+        FROM questionnaire_record qr
+        LEFT JOIN patient p ON qr.patient_id = p.id
+        LEFT JOIN doctor d ON qr.doctor_id = d.id
+        INNER JOIN patient_doctor pd ON qr.patient_id = pd.patient_id
+        WHERE qr.patient_id = #{patientId} AND pd.doctor_id = #{doctorId}
+        ORDER BY qr.assessment_date DESC, qr.create_time DESC
+    </select>
+
+    <!-- 根据住院号查询所有问卷结果 -->
+    <select id="findByAdmissionNumber" parameterType="java.lang.String" resultMap="BaseResultMap">
+        SELECT qr.*, 
+               p.name as patient_name, p.gender as patient_gender, p.phone as patient_phone,
+               d.username as doctor_name, d.employee_number as doctor_employee_number
+        FROM questionnaire_record qr
+        LEFT JOIN patient p ON qr.patient_id = p.id
+        LEFT JOIN doctor d ON qr.doctor_id = d.id
+        WHERE qr.admission_number = #{admissionNumber}
+        ORDER BY qr.assessment_date DESC, qr.create_time DESC
+    </select>
+
+    <!-- 根据患者ID和日期范围查询 -->
+    <select id="findByPatientIdAndDateRange" resultMap="BaseResultMap">
+        SELECT qr.*, 
+               p.name as patient_name, p.gender as patient_gender, p.phone as patient_phone,
+               d.username as doctor_name, d.employee_number as doctor_employee_number
+        FROM questionnaire_record qr
+        LEFT JOIN patient p ON qr.patient_id = p.id
+        LEFT JOIN doctor d ON qr.doctor_id = d.id
+        WHERE qr.patient_id = #{patientId}
+        <if test="startDate != null">
+            AND qr.assessment_date >= #{startDate}
+        </if>
+        <if test="endDate != null">
+            AND qr.assessment_date &lt;= #{endDate}
+        </if>
+        ORDER BY qr.assessment_date DESC, qr.create_time DESC
+    </select>
+
+    <!-- 根据患者ID、日期范围和医生ID查询（权限过滤） -->
+    <select id="findByPatientIdAndDateRangeAndDoctorId" resultMap="BaseResultMap">
+        SELECT qr.*, 
+               p.name as patient_name, p.gender as patient_gender, p.phone as patient_phone,
+               d.username as doctor_name, d.employee_number as doctor_employee_number
+        FROM questionnaire_record qr
+        LEFT JOIN patient p ON qr.patient_id = p.id
+        LEFT JOIN doctor d ON qr.doctor_id = d.id
+        INNER JOIN patient_doctor pd ON qr.patient_id = pd.patient_id
+        WHERE qr.patient_id = #{patientId} AND pd.doctor_id = #{doctorId}
+        <if test="startDate != null">
+            AND qr.assessment_date >= #{startDate}
+        </if>
+        <if test="endDate != null">
+            AND qr.assessment_date &lt;= #{endDate}
+        </if>
+        ORDER BY qr.assessment_date DESC, qr.create_time DESC
+    </select>
+
+    <!-- 根据住院号和日期范围查询 -->
+    <select id="findByAdmissionNumberAndDateRange" resultMap="BaseResultMap">
+        SELECT qr.*, 
+               p.name as patient_name, p.gender as patient_gender, p.phone as patient_phone,
+               d.username as doctor_name, d.employee_number as doctor_employee_number
+        FROM questionnaire_record qr
+        LEFT JOIN patient p ON qr.patient_id = p.id
+        LEFT JOIN doctor d ON qr.doctor_id = d.id
+        WHERE qr.admission_number = #{admissionNumber}
+        <if test="startDate != null">
+            AND qr.assessment_date >= #{startDate}
+        </if>
+        <if test="endDate != null">
+            AND qr.assessment_date &lt;= #{endDate}
+        </if>
+        ORDER BY qr.assessment_date DESC, qr.create_time DESC
+    </select>
+
+    <!-- 查询所有问卷结果 -->
+    <select id="findAll" resultMap="BaseResultMap">
+        SELECT qr.*, 
+               p.name as patient_name, p.gender as patient_gender, p.phone as patient_phone,
+               d.username as doctor_name, d.employee_number as doctor_employee_number
+        FROM questionnaire_record qr
+        LEFT JOIN patient p ON qr.patient_id = p.id
+        LEFT JOIN doctor d ON qr.doctor_id = d.id
+        ORDER BY qr.create_time DESC
+    </select>
+
+    <!-- 根据医生ID查询所有问卷结果（权限过滤） -->
+    <select id="findByDoctorId" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT qr.*, 
+               p.name as patient_name, p.gender as patient_gender, p.phone as patient_phone,
+               d.username as doctor_name, d.employee_number as doctor_employee_number
+        FROM questionnaire_record qr
+        LEFT JOIN patient p ON qr.patient_id = p.id
+        LEFT JOIN doctor d ON qr.doctor_id = d.id
+        INNER JOIN patient_doctor pd ON qr.patient_id = pd.patient_id
+        WHERE pd.doctor_id = #{doctorId}
+        ORDER BY qr.create_time DESC
+    </select>
+
+    <!-- 根据患者名称和时间范围组合查询（分页）- 使用动态SQL -->
+    <select id="findByPatientNameAndDateRange" resultMap="BaseResultMap">
+        SELECT qr.*, 
+               p.name as patient_name, p.gender as patient_gender, p.phone as patient_phone,
+               d.username as doctor_name, d.employee_number as doctor_employee_number
+        FROM questionnaire_record qr
+        LEFT JOIN patient p ON qr.patient_id = p.id
+        LEFT JOIN doctor d ON qr.doctor_id = d.id
+        <where>
+            <if test="patientName != null and patientName != ''">
+                AND (p.name LIKE CONCAT('%', #{patientName}, '%')
+                     OR qr.admission_number LIKE CONCAT('%', #{patientName}, '%'))
+            </if>
+            <if test="startDate != null">
+                AND qr.assessment_date >= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND qr.assessment_date &lt;= #{endDate}
+            </if>
+        </where>
+        ORDER BY qr.create_time DESC
+        <if test="offset != null and pageSize != null">
+            LIMIT #{offset}, #{pageSize}
+        </if>
+    </select>
+
+    <!-- 统计根据患者名称和时间范围查询的总数 -->
+    <select id="countByPatientNameAndDateRange" resultType="int">
+        SELECT COUNT(*)
+        FROM questionnaire_record qr
+        <if test="patientName != null and patientName != ''">
+            INNER JOIN patient p ON qr.patient_id = p.id
+        </if>
+        <where>
+            <if test="patientName != null and patientName != ''">
+                AND (p.name LIKE CONCAT('%', #{patientName}, '%')
+                     OR qr.admission_number LIKE CONCAT('%', #{patientName}, '%'))
+            </if>
+            <if test="startDate != null">
+                AND qr.assessment_date >= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND qr.assessment_date &lt;= #{endDate}
+            </if>
+        </where>
+    </select>
+
+    <!-- 根据患者名称、时间范围和医生ID组合查询（分页，权限过滤） -->
+    <select id="findByPatientNameAndDateRangeAndDoctorId" resultMap="BaseResultMap">
+        SELECT qr.*, 
+               p.name as patient_name, p.gender as patient_gender, p.phone as patient_phone,
+               d.username as doctor_name, d.employee_number as doctor_employee_number
+        FROM questionnaire_record qr
+        LEFT JOIN patient p ON qr.patient_id = p.id
+        LEFT JOIN doctor d ON qr.doctor_id = d.id
+        INNER JOIN patient_doctor pd ON qr.patient_id = pd.patient_id
+        <where>
+            AND pd.doctor_id = #{doctorId}
+            <if test="patientName != null and patientName != ''">
+                AND (p.name LIKE CONCAT('%', #{patientName}, '%')
+                     OR qr.admission_number LIKE CONCAT('%', #{patientName}, '%'))
+            </if>
+            <if test="startDate != null">
+                AND qr.assessment_date >= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND qr.assessment_date &lt;= #{endDate}
+            </if>
+        </where>
+        ORDER BY qr.create_time DESC
+        <if test="offset != null and pageSize != null">
+            LIMIT #{offset}, #{pageSize}
+        </if>
+    </select>
+
+    <!-- 统计根据患者名称、时间范围和医生ID查询的总数（权限过滤） -->
+    <select id="countByPatientNameAndDateRangeAndDoctorId" resultType="int">
+        SELECT COUNT(*)
+        FROM questionnaire_record qr
+        INNER JOIN patient_doctor pd ON qr.patient_id = pd.patient_id
+        <if test="patientName != null and patientName != ''">
+            INNER JOIN patient p ON qr.patient_id = p.id
+        </if>
+        <where>
+            AND pd.doctor_id = #{doctorId}
+            <if test="patientName != null and patientName != ''">
+                AND (p.name LIKE CONCAT('%', #{patientName}, '%')
+                     OR qr.admission_number LIKE CONCAT('%', #{patientName}, '%'))
+            </if>
+            <if test="startDate != null">
+                AND qr.assessment_date >= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND qr.assessment_date &lt;= #{endDate}
+            </if>
+        </where>
+    </select>
+
+    <!-- 更新问卷结果 -->
+    <update id="update" parameterType="org.hospital.qmg.entity.QuestionnaireRecord">
+        UPDATE questionnaire_record
+        SET
+            patient_id = #{patientId},
+            admission_number = #{admissionNumber},
+            assessment_date = #{assessmentDate},
+            selections = #{selections},
+            item_scores = #{itemScores},
+            total_score = #{totalScore},
+            category_scores = #{categoryScores},
+            doctor_id = #{doctorId},
+            doctor_username = #{doctorUsername},
+            modified_by = #{modifiedBy},
+            user_input_data = #{userInputData},
+            update_time = #{updateTime}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据ID删除 -->
+    <delete id="deleteById" parameterType="java.lang.Integer">
+        DELETE FROM questionnaire_record WHERE id = #{id}
+    </delete>
+
+    <!-- 统计最近一周每天的问卷数量 -->
+    <select id="countByDayLast7Days" resultType="java.util.HashMap">
+        SELECT 
+            DATE(assessment_date) as date,
+            COUNT(*) as count
+        FROM questionnaire_record
+        WHERE assessment_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+        GROUP BY DATE(assessment_date)
+        ORDER BY date ASC
+    </select>
+
+</mapper>

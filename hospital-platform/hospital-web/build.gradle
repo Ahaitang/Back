@@ -1,0 +1,16 @@
+plugins {
+    id 'org.springframework.boot'
+}
+
+dependencies {
+    implementation project(':hospital-common')
+    implementation project(':hospital-qmg')
+    implementation project(':hospital-neuroimmune')
+    implementation project(':hospital-ocr')
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-cache'
+}
+
+bootJar {
+    archiveFileName = 'hospital-platform.jar'
+}
