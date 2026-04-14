@@ -4,6 +4,7 @@ import org.hospital.neuroimmune.common.Result;
 import org.hospital.neuroimmune.dto.PageRequest;
 import org.hospital.neuroimmune.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -27,6 +28,7 @@ public class DashboardController {
     private MedicationService medicationService;
 
     @GetMapping("/stats")
+    @Cacheable(value = "neuro-stats", key = "'dashboard:' + #role + ':' + #userId")
     public Result<Map<String, Object>> stats(
             @RequestHeader(value = "X-User-Role", required = false) String role,
             @RequestHeader(value = "X-User-Id", required = false) Long userId) {

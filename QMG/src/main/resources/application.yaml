@@ -52,3 +52,22 @@ spring:
     prefix: classpath:/templates/
     # 在构建 URL 时添加到视图名称后的后缀（默认值： .html ）
     suffix: .html
+
+  # Redis 缓存配置
+  redis:
+    host: localhost
+    port: 6379
+    password:
+    database: 0
+    timeout: 5000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+
+  # 开启缓存
+  cache:
+    type: redis
+    redis:
+      time-to-live: 600000ms  # 默认10分钟

@@ -7,6 +7,8 @@ import org.hospital.neuroimmune.entity.FollowUp;
 import org.hospital.neuroimmune.mapper.FollowUpMapper;
 import org.hospital.neuroimmune.service.FollowUpService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -40,6 +42,7 @@ public class FollowUpServiceImpl implements FollowUpService {
     }
 
     @Override
+    @CacheEvict(value = {"neuro-followup", "neuro-stats"}, allEntries = true)
     public void save(FollowUp followUp) {
         if (followUp.getStatus() == null) {
             followUp.setStatus("pending");
@@ -68,11 +71,13 @@ public class FollowUpServiceImpl implements FollowUpService {
     }
 
     @Override
+    @Cacheable(value = "neuro-stats", key = "'pending:total'")
     public Long getPendingCount() {
         return followUpMapper.selectPendingCount();
     }
 
     @Override
+    @Cacheable(value = "neuro-stats", key = "'pending:doctor:' + #doctorId")
     public Long getPendingCountByDoctorId(Long doctorId) {
         return followUpMapper.selectPendingCountByDoctorId(doctorId);
     }

@@ -10,6 +10,8 @@ import org.hospital.qmg.service.PatientDoctorService;
 import org.hospital.qmg.service.DoctorService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -77,6 +79,7 @@ public class PatientServiceImpl implements PatientService {
     }
 
     @Override
+    @Cacheable(value = "qmg-patient", key = "'admission:' + #admissionNumber", unless = "#result == null")
     public Patient findByAdmissionNumber(String admissionNumber) {
         log.info("根据住院号查询患者: {}", admissionNumber);
         return patientMapper.findByAdmissionNumber(admissionNumber);
@@ -131,6 +134,7 @@ public class PatientServiceImpl implements PatientService {
     }
 
     @Override
+    @CacheEvict(value = "qmg-patient", key = "'id:' + #patient.id")
     public void update(Patient patient) {
         log.info("更新患者信息: {}", patient);
         patient.setUpdateTime(LocalDateTime.now());
@@ -138,6 +142,7 @@ public class PatientServiceImpl implements PatientService {
     }
 
     @Override
+    @CacheEvict(value = "qmg-patient", allEntries = true)
     public void deleteById(Integer id) {
         log.info("删除患者: {}", id);
         // 删除患者时，会自动删除对应的患者-医生关系（外键级联删除）

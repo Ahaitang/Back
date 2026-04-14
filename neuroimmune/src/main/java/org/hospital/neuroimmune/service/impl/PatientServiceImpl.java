@@ -10,6 +10,8 @@ import org.hospital.neuroimmune.mapper.PatientMapper;
 import org.hospital.neuroimmune.service.PatientService;
 import org.hospital.neuroimmune.util.PasswordUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -28,6 +30,7 @@ public class PatientServiceImpl implements PatientService {
     }
 
     @Override
+    @Cacheable(value = "neuro-patient", key = "#id", unless = "#result == null")
     public Patient getById(Long id) {
         return patientMapper.selectById(id);
     }
@@ -45,6 +48,7 @@ public class PatientServiceImpl implements PatientService {
     }
 
     @Override
+    @CacheEvict(value = "neuro-patient", key = "#patient.id", condition = "#patient.id != null")
     public void save(Patient patient) {
         if (patient.getId() == null) {
             // 新增时加密密码
@@ -66,11 +70,13 @@ public class PatientServiceImpl implements PatientService {
     }
 
     @Override
+    @CacheEvict(value = "neuro-patient", key = "#id")
     public void delete(Long id) {
         patientMapper.deleteById(id);
     }
 
     @Override
+    @Cacheable(value = "neuro-stats", key = "'patient:count:doctor:' + #doctorId")
     public Long countByDoctorId(Long doctorId) {
         return patientMapper.selectCountByDoctorId(doctorId);
     }

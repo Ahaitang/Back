@@ -8,6 +8,8 @@ import org.hospital.qmg.mapper.QuestionnaireOptionMapper;
 import org.hospital.qmg.service.QuestionnaireConfigService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -27,6 +29,7 @@ public class QuestionnaireConfigServiceImpl implements QuestionnaireConfigServic
     private QuestionnaireOptionMapper optionMapper;
 
     @Override
+    @Cacheable(value = "qmg-config", key = "'items:all'")
     public List<QuestionnaireItem> getAllItems() {
         List<QuestionnaireItem> items = itemMapper.findAll();
         // 为每个项目加载选项
@@ -60,6 +63,7 @@ public class QuestionnaireConfigServiceImpl implements QuestionnaireConfigServic
 
     @Override
     @Transactional
+    @CacheEvict(value = "qmg-config", allEntries = true)
     public void saveOrUpdateItem(QuestionnaireItem item) {
         LocalDateTime now = LocalDateTime.now();
         
@@ -93,6 +97,7 @@ public class QuestionnaireConfigServiceImpl implements QuestionnaireConfigServic
 
     @Override
     @Transactional
+    @CacheEvict(value = "qmg-config", allEntries = true)
     public void deleteItem(Integer itemId) {
         QuestionnaireItem item = itemMapper.findById(itemId);
         if (item != null) {

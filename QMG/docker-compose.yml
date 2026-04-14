@@ -23,8 +23,27 @@ services:
     networks:
       - qmg-network
 
+  redis:
+    image: redis:7-alpine
+    container_name: qmg-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    networks:
+      - qmg-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   mysql_data:
+    driver: local
+  redis_data:
     driver: local
 
 networks:
