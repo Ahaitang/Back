@@ -1,7 +1,9 @@
 package org.hospital.neuroimmune.service.impl;
 
-import org.hospital.neuroimmune.dto.PageRequest;
-import org.hospital.neuroimmune.dto.PageResult;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import org.hospital.common.model.PageRequest;
+import org.hospital.common.model.PageResult;
 import org.hospital.neuroimmune.entity.Medication;
 import org.hospital.neuroimmune.mapper.MedicationMapper;
 import org.hospital.neuroimmune.service.MedicationService;
@@ -10,8 +12,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Service
 public class MedicationServiceImpl implements MedicationService {
@@ -21,9 +21,61 @@ public class MedicationServiceImpl implements MedicationService {
 
     @Override
     public PageResult<Medication> getList(PageRequest request) {
-        List<Medication> list = medicationMapper.selectList(request);
-        Long total = medicationMapper.selectCount(request);
-        return new PageResult<>(list, total, request.getPageNum(), request.getPageSize());
+        Page<Medication> page = new Page<>(request.getPageNum(), request.getPageSize());
+
+        LambdaQueryWrapper<Medication> wrapper = buildQueryWrapper(request);
+        wrapper.orderByDesc(Medication::getDate).orderByDesc(Medication::getCreateTime);
+
+        Page<Medication> result = medicationMapper.selectPage(page, wrapper);
+        return new PageResult<>(result.getRecords(), result.getTotal(), request.getPageNum(), request.getPageSize());
+    }
+
+    @Override
+    public PageResult<Medication> getListByDoctorId(Long doctorId, PageRequest request) {
+        Page<Medication> page = new Page<>(request.getPageNum(), request.getPageSize());
+
+        LambdaQueryWrapper<Medication> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Medication::getDoctorId, doctorId);
+
+        if (request.getKeyword() != null && !request.getKeyword().isEmpty()) {
+            wrapper.and(w -> w.like(Medication::getPatientName, request.getKeyword())
+                    .or().like(Medication::getMedicationName, request.getKeyword()));
+        }
+        if (request.getStartDate() != null && !request.getStartDate().isEmpty()) {
+            wrapper.ge(Medication::getDate, request.getStartDate());
+        }
+        if (request.getEndDate() != null && !request.getEndDate().isEmpty()) {
+            wrapper.le(Medication::getDate, request.getEndDate());
+        }
+
+        wrapper.orderByDesc(Medication::getDate).orderByDesc(Medication::getCreateTime);
+
+        Page<Medication> result = medicationMapper.selectPage(page, wrapper);
+        return new PageResult<>(result.getRecords(), result.getTotal(), request.getPageNum(), request.getPageSize());
+    }
+
+    private LambdaQueryWrapper<Medication> buildQueryWrapper(PageRequest request) {
+        LambdaQueryWrapper<Medication> wrapper = new LambdaQueryWrapper<>();
+
+        if (request.getPatientId() != null) {
+            wrapper.eq(Medication::getPatientId, request.getPatientId());
+        }
+        if (request.getDoctorId() != null) {
+            wrapper.eq(Medication::getDoctorId, request.getDoctorId());
+        }
+        if (request.getKeyword() != null && !request.getKeyword().isEmpty()) {
+            wrapper.and(w -> w.like(Medication::getPatientName, request.getKeyword())
+                    .or().like(Medication::getMedicationName, request.getKeyword())
+                    .or().like(Medication::getDoctorName, request.getKeyword()));
+        }
+        if (request.getStartDate() != null && !request.getStartDate().isEmpty()) {
+            wrapper.ge(Medication::getDate, request.getStartDate());
+        }
+        if (request.getEndDate() != null && !request.getEndDate().isEmpty()) {
+            wrapper.le(Medication::getDate, request.getEndDate());
+        }
+
+        return wrapper;
     }
 
     @Override
@@ -32,12 +84,28 @@ public class MedicationServiceImpl implements MedicationService {
     }
 
     @Override
-    public void save(Medication medication) {
-        // 如果有 duration 但没有 endDate，自动计算结束日期
-        if (medication.getDate() != null && medication.getDuration() != null && medication.getEndDate() == null) {
-            medication.setEndDate(calculateEndDate(medication.getDate(), medication.getDuration()));
-        }
+    public List<Medication> getByPatientId(Long patientId) {
+        LambdaQueryWrapper<Medication> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Medication::getPatientId, patientId)
+               .orderByDesc(Medication::getDate);
+        return medicationMapper.selectList(wrapper);
+    }
 
+    @Override
+    public List<Medication> getByDoctorId(Long doctorId) {
+        LambdaQueryWrapper<Medication> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Medication::getDoctorId, doctorId)
+               .orderByDesc(Medication::getDate);
+        return medicationMapper.selectList(wrapper);
+    }
+
+    @Override
+    public List<Medication> getAllMedications() {
+        return medicationMapper.selectAllMedications();
+    }
+
+    @Override
+    public void save(Medication medication) {
         if (medication.getId() == null) {
             medicationMapper.insert(medication);
         } else {
@@ -56,44 +124,9 @@ public class MedicationServiceImpl implements MedicationService {
     }
 
     @Override
-    public PageResult<Medication> getListByDoctorId(Long doctorId, PageRequest request) {
-        List<Medication> list = medicationMapper.selectListByDoctorId(doctorId, request);
-        Long total = medicationMapper.selectCountByDoctorId(doctorId);
-        return new PageResult<>(list, total, request.getPageNum(), request.getPageSize());
-    }
-
-    /**
-     * 根据 duration 字符串计算结束日期
-     * 支持格式：X天、X周、X个月、X月、X年
-     */
-    private LocalDateTime calculateEndDate(LocalDateTime startDate, String duration) {
-        if (startDate == null || duration == null) {
-            return null;
-        }
-
-        // 解析 duration，如 "1个月"、"3个月"、"7天"、"2周"、"1年"
-        Pattern pattern = Pattern.compile("(\\d+)\\s*(天|日|周|个月|月|年)");
-        Matcher matcher = pattern.matcher(duration.trim());
-
-        if (matcher.find()) {
-            int amount = Integer.parseInt(matcher.group(1));
-            String unit = matcher.group(2);
-
-            switch (unit) {
-                case "天":
-                case "日":
-                    return startDate.plusDays(amount);
-                case "周":
-                    return startDate.plusWeeks(amount);
-                case "个月":
-                case "月":
-                    return startDate.plusMonths(amount);
-                case "年":
-                    return startDate.plusYears(amount);
-            }
-        }
-
-        // 默认返回一个月
-        return startDate.plusMonths(1);
+    public Long countByPatientId(Long patientId) {
+        LambdaQueryWrapper<Medication> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Medication::getPatientId, patientId);
+        return medicationMapper.selectCount(wrapper);
     }
 }

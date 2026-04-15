@@ -2,68 +2,33 @@ server:
   port: 8080
 
 spring:
-  # QMG 数据源
-  datasource:
-    qmg:
-      jdbc-url: jdbc:mysql://localhost:3306/QMG?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true
-      username: root
-      password: 123456
-      driver-class-name: com.mysql.cj.jdbc.Driver
-      hikari:
-        pool-name: QMG-HikariPool
-        maximum-pool-size: 10
-
-    # Neuroimmune 数据源
-    neuroimmune:
-      jdbc-url: jdbc:mysql://localhost:3306/neuroimmune?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf8&useSSL=false
-      username: root
-      password: 123456
-      driver-class-name: com.mysql.cj.jdbc.Driver
-      hikari:
-        pool-name: Neuroimmune-HikariPool
-        maximum-pool-size: 10
-
-  # Redis 缓存配置
-  redis:
-    host: localhost
-    port: 6379
-    password:
-    timeout: 5000ms
-    lettuce:
-      pool:
-        max-active: 16
-        max-idle: 8
-        min-idle: 2
-
-  cache:
-    type: redis
-
-  # JSON日期格式
+  profiles:
+    active: dev
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai
-
-  # 文件上传配置
   servlet:
     multipart:
       max-file-size: 10MB
       max-request-size: 50MB
+  cache:
+    type: redis
 
-# MinIO 配置
-minio:
-  endpoint: http://101.201.30.29:9100
-  access-key: Abc123456
-  secret-key: Abc123456
-  bucket-name: neuroimmune
+# JWT 认证配置
+jwt:
+  secret: ${JWT_SECRET:hospital-platform-jwt-secret-key-2024-secure}
+  expiration: ${JWT_EXPIRATION:86400000}  # 默认24小时（毫秒）
 
-# 百度OCR配置
-baidu:
-  ocr:
-    app-id: your-app-id
-    api-key: your-api-key
-    secret-key: your-secret-key
+# Actuator 健康检查配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
 
-# 日志配置
 logging:
   level:
     org.hospital: DEBUG

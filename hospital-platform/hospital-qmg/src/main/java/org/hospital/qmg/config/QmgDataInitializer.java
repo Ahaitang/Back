@@ -2,7 +2,7 @@ package org.hospital.qmg.config;
 
 import lombok.extern.slf4j.Slf4j;
 import org.hospital.qmg.entity.Doctor;
-import org.hospital.qmg.mapper.DoctorMapper;
+import org.hospital.qmg.mapper.QmgDoctorMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
 public class QmgDataInitializer implements CommandLineRunner {
 
     @Autowired
-    private DoctorMapper doctorMapper;
+    private QmgDoctorMapper doctorMapper;
 
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 

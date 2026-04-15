@@ -2,13 +2,14 @@ package org.hospital.neuroimmune.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import org.hospital.neuroimmune.dto.LoginRequest;
-import org.hospital.neuroimmune.dto.PageRequest;
-import org.hospital.neuroimmune.dto.PageResult;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import org.hospital.common.model.LoginRequest;
+import org.hospital.common.model.PageRequest;
+import org.hospital.common.model.PageResult;
 import org.hospital.neuroimmune.entity.Patient;
-import org.hospital.neuroimmune.mapper.PatientMapper;
+import org.hospital.neuroimmune.mapper.NeuroimmunePatientMapper;
 import org.hospital.neuroimmune.service.PatientService;
-import org.hospital.neuroimmune.util.PasswordUtil;
+import org.hospital.common.util.PasswordUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -16,17 +17,60 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-@Service
+@Service("neuroimmunePatientService")
 public class PatientServiceImpl implements PatientService {
 
     @Autowired
-    private PatientMapper patientMapper;
+    private NeuroimmunePatientMapper patientMapper;
 
     @Override
     public PageResult<Patient> getList(PageRequest request) {
-        List<Patient> list = patientMapper.selectList(request);
-        Long total = patientMapper.selectCount(request);
-        return new PageResult<>(list, total, request.getPageNum(), request.getPageSize());
+        Page<Patient> page = new Page<>(request.getPageNum(), request.getPageSize());
+
+        LambdaQueryWrapper<Patient> wrapper = buildQueryWrapper(request);
+        wrapper.orderByDesc(Patient::getUpdateTime);
+
+        Page<Patient> result = patientMapper.selectPage(page, wrapper);
+        return new PageResult<>(result.getRecords(), result.getTotal(), request.getPageNum(), request.getPageSize());
+    }
+
+    @Override
+    public PageResult<Patient> getListByDoctorId(Long doctorId, PageRequest request) {
+        Page<Patient> page = new Page<>(request.getPageNum(), request.getPageSize());
+
+        LambdaQueryWrapper<Patient> wrapper = buildQueryWrapper(request);
+        wrapper.eq(Patient::getDoctorId, doctorId);
+        wrapper.orderByDesc(Patient::getUpdateTime);
+
+        Page<Patient> result = patientMapper.selectPage(page, wrapper);
+        return new PageResult<>(result.getRecords(), result.getTotal(), request.getPageNum(), request.getPageSize());
+    }
+
+    /**
+     * 构建查询条件
+     */
+    private LambdaQueryWrapper<Patient> buildQueryWrapper(PageRequest request) {
+        LambdaQueryWrapper<Patient> wrapper = new LambdaQueryWrapper<>();
+
+        if (request.getKeyword() != null && !request.getKeyword().isEmpty()) {
+            wrapper.and(w -> w.like(Patient::getName, request.getKeyword())
+                    .or().like(Patient::getPhone, request.getKeyword())
+                    .or().like(Patient::getId, request.getKeyword()));
+        }
+        if (request.getGender() != null && !request.getGender().isEmpty()) {
+            wrapper.eq(Patient::getGender, request.getGender());
+        }
+        if (request.getIsRealAuth() != null) {
+            wrapper.eq(Patient::getIsRealAuth, request.getIsRealAuth());
+        }
+        if (request.getDoctorId() != null) {
+            wrapper.eq(Patient::getDoctorId, request.getDoctorId());
+        }
+        if (request.getType() != null && !request.getType().isEmpty()) {
+            wrapper.eq(Patient::getDiseaseType, request.getType());
+        }
+
+        return wrapper;
     }
 
     @Override
@@ -37,7 +81,6 @@ public class PatientServiceImpl implements PatientService {
 
     @Override
     public Patient login(LoginRequest request) {
-        // 用户名可以是手机号
         Patient patient = patientMapper.selectByPhone(request.getUsername());
         if (patient != null && patient.getPassword() != null) {
             if (PasswordUtil.matches(request.getPassword(), patient.getPassword())) {
@@ -51,7 +94,6 @@ public class PatientServiceImpl implements PatientService {
     @CacheEvict(value = "neuro-patient", key = "#patient.id", condition = "#patient.id != null")
     public void save(Patient patient) {
         if (patient.getId() == null) {
-            // 新增时加密密码
             if (patient.getPassword() != null && !patient.getPassword().startsWith("$2")) {
                 patient.setPassword(PasswordUtil.encode(patient.getPassword()));
             }
@@ -82,17 +124,8 @@ public class PatientServiceImpl implements PatientService {
     }
 
     @Override
-    public PageResult<Patient> getListByDoctorId(Long doctorId, PageRequest request) {
-        request.setDoctorId(doctorId);
-        List<Patient> list = patientMapper.selectList(request);
-        Long total = patientMapper.selectCount(request);
-        return new PageResult<>(list, total, request.getPageNum(), request.getPageSize());
-    }
-
-    @Override
     public void batchInsert(List<Patient> patients) {
         for (Patient patient : patients) {
-            // 加密密码
             if (patient.getPassword() != null && !patient.getPassword().startsWith("$2")) {
                 patient.setPassword(PasswordUtil.encode(patient.getPassword()));
             }

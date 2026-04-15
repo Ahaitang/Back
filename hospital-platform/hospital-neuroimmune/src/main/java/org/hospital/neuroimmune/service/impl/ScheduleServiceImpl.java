@@ -1,5 +1,6 @@
 package org.hospital.neuroimmune.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.hospital.neuroimmune.dto.ScheduleDTO;
 import org.hospital.neuroimmune.entity.FollowUp;
 import org.hospital.neuroimmune.entity.Medication;
@@ -85,27 +86,33 @@ public class ScheduleServiceImpl implements ScheduleService {
     }
 
     private List<FollowUp> getFollowUpsByDate(String date, String role, Long userId) {
-        List<FollowUp> allFollowUps = followUpMapper.selectList(createDateRequest(date));
+        LambdaQueryWrapper<FollowUp> wrapper = new LambdaQueryWrapper<>();
+        wrapper.ge(FollowUp::getDate, date + " 00:00:00")
+               .le(FollowUp::getDate, date + " 23:59:59");
 
         if ("doctor".equals(role) && userId != null) {
-            // 医生只看自己的随访
-            return allFollowUps.stream()
-                    .filter(fu -> userId.equals(fu.getDoctorId()))
-                    .collect(Collectors.toList());
+            wrapper.eq(FollowUp::getDoctorId, userId);
         } else if ("patient".equals(role) && userId != null) {
-            // 患者只看自己的随访
-            return allFollowUps.stream()
-                    .filter(fu -> userId.equals(fu.getPatientId()))
-                    .collect(Collectors.toList());
+            wrapper.eq(FollowUp::getPatientId, userId);
         }
-        return allFollowUps;
+
+        wrapper.orderByAsc(FollowUp::getDate);
+        return followUpMapper.selectList(wrapper);
     }
 
     private List<Medication> getMedicationsByDate(String date, String role, Long userId) {
         LocalDate queryDate = LocalDate.parse(date, DATE_FORMATTER);
 
         // 获取所有用药建议，然后筛选日期范围内的
-        List<Medication> allMedications = medicationMapper.selectAllMedications();
+        LambdaQueryWrapper<Medication> wrapper = new LambdaQueryWrapper<>();
+        if ("doctor".equals(role) && userId != null) {
+            wrapper.eq(Medication::getDoctorId, userId);
+        } else if ("patient".equals(role) && userId != null) {
+            wrapper.eq(Medication::getPatientId, userId);
+        }
+        wrapper.orderByDesc(Medication::getDate);
+
+        List<Medication> allMedications = medicationMapper.selectList(wrapper);
 
         List<Medication> filtered = allMedications.stream()
                 .filter(med -> {
@@ -126,15 +133,6 @@ public class ScheduleServiceImpl implements ScheduleService {
 
                     // 查询日期在 [startDate, endDate] 范围内
                     return !queryDate.isBefore(startDate) && !queryDate.isAfter(endDate);
-                })
-                .filter(med -> {
-                    // 角色过滤
-                    if ("doctor".equals(role) && userId != null) {
-                        return userId.equals(med.getDoctorId());
-                    } else if ("patient".equals(role) && userId != null) {
-                        return userId.equals(med.getPatientId());
-                    }
-                    return true;
                 })
                 .collect(Collectors.toList());
 
@@ -171,14 +169,6 @@ public class ScheduleServiceImpl implements ScheduleService {
         }
 
         return startDate.plusMonths(1);
-    }
-
-    private org.hospital.neuroimmune.dto.PageRequest createDateRequest(String date) {
-        org.hospital.neuroimmune.dto.PageRequest request = new org.hospital.neuroimmune.dto.PageRequest();
-        request.setStartDate(date);
-        request.setEndDate(date);
-        request.setPageSize(100); // 足够大的页面大小
-        return request;
     }
 
     private String formatTimeRange(LocalDateTime dateTime) {

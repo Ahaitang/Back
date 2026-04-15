@@ -1,12 +1,12 @@
 package org.hospital.neuroimmune.controller;
 
-import org.hospital.neuroimmune.common.Result;
-import org.hospital.neuroimmune.dto.ImportResult;
+import org.hospital.common.model.Result;
+import org.hospital.common.model.ImportResult;
 import org.hospital.neuroimmune.entity.Doctor;
 import org.hospital.neuroimmune.entity.Patient;
 import org.hospital.neuroimmune.service.DoctorService;
 import org.hospital.neuroimmune.service.PatientService;
-import org.hospital.neuroimmune.util.ExcelUtil;
+import org.hospital.common.util.ExcelUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -19,7 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/neuroimmune/import")
+@RequestMapping("/api/v1/neuroimmune/import")
 @CrossOrigin
 public class ImportController {
 

@@ -15,7 +15,7 @@ import java.io.IOException;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/ocr")
+@RequestMapping("/api/v1/ocr")
 @CrossOrigin
 public class OcrController {
 

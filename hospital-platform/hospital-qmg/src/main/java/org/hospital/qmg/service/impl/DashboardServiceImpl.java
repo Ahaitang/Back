@@ -1,7 +1,7 @@
 package org.hospital.qmg.service.impl;
 
 import lombok.extern.slf4j.Slf4j;
-import org.hospital.qmg.mapper.PatientMapper;
+import org.hospital.qmg.mapper.QmgPatientMapper;
 import org.hospital.qmg.mapper.QuestionnaireRecordMapper;
 import org.hospital.qmg.service.DashboardService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +19,7 @@ import java.util.Map;
 public class DashboardServiceImpl implements DashboardService {
 
     @Autowired
-    private PatientMapper patientMapper;
+    private QmgPatientMapper patientMapper;
 
     @Autowired
     private QuestionnaireRecordMapper recordMapper;

@@ -1,13 +1,13 @@
 package org.hospital.neuroimmune.controller;
 
-import org.hospital.neuroimmune.common.Result;
+import org.hospital.common.model.Result;
 import org.hospital.neuroimmune.dto.ScheduleDTO;
 import org.hospital.neuroimmune.service.ScheduleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/neuroimmune/schedule")
+@RequestMapping("/api/v1/neuroimmune/schedule")
 @CrossOrigin
 public class ScheduleController {
 

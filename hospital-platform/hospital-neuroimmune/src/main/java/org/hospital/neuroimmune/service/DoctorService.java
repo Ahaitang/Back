@@ -1,9 +1,9 @@
 package org.hospital.neuroimmune.service;
 
 import org.hospital.neuroimmune.entity.Doctor;
-import org.hospital.neuroimmune.dto.PageRequest;
-import org.hospital.neuroimmune.dto.PageResult;
-import org.hospital.neuroimmune.dto.LoginRequest;
+import org.hospital.common.model.PageRequest;
+import org.hospital.common.model.PageResult;
+import org.hospital.common.model.LoginRequest;
 
 import java.util.List;
 

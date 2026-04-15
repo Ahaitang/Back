@@ -2,7 +2,7 @@ package org.hospital.qmg.service.impl;
 
 import lombok.extern.slf4j.Slf4j;
 import org.hospital.qmg.entity.Doctor;
-import org.hospital.qmg.mapper.DoctorMapper;
+import org.hospital.qmg.mapper.QmgDoctorMapper;
 import org.hospital.qmg.service.DoctorService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -15,11 +15,11 @@ import java.util.List;
  * 医生Service实现类
  */
 @Slf4j
-@Service
+@Service("qmgDoctorService")
 public class DoctorServiceImpl implements DoctorService {
 
     @Autowired
-    private DoctorMapper doctorMapper;
+    private QmgDoctorMapper doctorMapper;
 
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 

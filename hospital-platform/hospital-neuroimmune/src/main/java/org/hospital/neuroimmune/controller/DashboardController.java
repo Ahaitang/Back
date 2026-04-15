@@ -1,7 +1,7 @@
 package org.hospital.neuroimmune.controller;
 
-import org.hospital.neuroimmune.common.Result;
-import org.hospital.neuroimmune.dto.PageRequest;
+import org.hospital.common.model.Result;
+import org.hospital.common.model.PageRequest;
 import org.hospital.neuroimmune.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
@@ -11,7 +11,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/neuroimmune/dashboard")
+@RequestMapping("/api/v1/neuroimmune/dashboard")
 @CrossOrigin
 public class DashboardController {
 

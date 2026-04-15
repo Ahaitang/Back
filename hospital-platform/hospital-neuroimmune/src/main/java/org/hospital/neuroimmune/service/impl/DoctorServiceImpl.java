@@ -1,38 +1,55 @@
 package org.hospital.neuroimmune.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import org.hospital.neuroimmune.dto.LoginRequest;
-import org.hospital.neuroimmune.dto.PageRequest;
-import org.hospital.neuroimmune.dto.PageResult;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import org.hospital.common.model.LoginRequest;
+import org.hospital.common.model.PageRequest;
+import org.hospital.common.model.PageResult;
 import org.hospital.neuroimmune.entity.Doctor;
-import org.hospital.neuroimmune.mapper.DoctorMapper;
-import org.hospital.neuroimmune.mapper.PatientMapper;
+import org.hospital.neuroimmune.mapper.NeuroimmuneDoctorMapper;
+import org.hospital.neuroimmune.mapper.NeuroimmunePatientMapper;
 import org.hospital.neuroimmune.service.DoctorService;
-import org.hospital.neuroimmune.util.PasswordUtil;
+import org.hospital.common.util.PasswordUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-@Service
+@Service("neuroimmuneDoctorService")
 public class DoctorServiceImpl implements DoctorService {
 
     @Autowired
-    private DoctorMapper doctorMapper;
+    private NeuroimmuneDoctorMapper doctorMapper;
 
     @Autowired
-    private PatientMapper patientMapper;
+    private NeuroimmunePatientMapper patientMapper;
 
     @Override
     public PageResult<Doctor> getList(PageRequest request) {
-        List<Doctor> list = doctorMapper.selectList(request);
+        Page<Doctor> page = new Page<>(request.getPageNum(), request.getPageSize());
+
+        LambdaQueryWrapper<Doctor> wrapper = new LambdaQueryWrapper<>();
+        // 关键词搜索
+        if (request.getKeyword() != null && !request.getKeyword().isEmpty()) {
+            wrapper.like(Doctor::getName, request.getKeyword())
+                   .or().like(Doctor::getPhone, request.getKeyword());
+        }
+        // 部门过滤
+        if (request.getDepartment() != null && !request.getDepartment().isEmpty()) {
+            wrapper.eq(Doctor::getDepartment, request.getDepartment());
+        }
+        wrapper.orderByDesc(Doctor::getCreateTime);
+
+        Page<Doctor> result = doctorMapper.selectPage(page, wrapper);
+
         // 设置每个医生的患者数量
-        list.forEach(doctor -> {
+        result.getRecords().forEach(doctor -> {
             Long count = patientMapper.selectCountByDoctorId(doctor.getId());
             doctor.setPatientCount(count.intValue());
         });
-        Long total = doctorMapper.selectCount(request);
-        return new PageResult<>(list, total, request.getPageNum(), request.getPageSize());
+
+        return new PageResult<>(result.getRecords(), result.getTotal(), request.getPageNum(), request.getPageSize());
     }
 
     @Override
@@ -47,7 +64,6 @@ public class DoctorServiceImpl implements DoctorService {
 
     @Override
     public Doctor login(LoginRequest request) {
-        // 用户名可以是手机号
         Doctor doctor = doctorMapper.selectByPhone(request.getUsername());
         if (doctor != null && doctor.getPassword() != null) {
             if (PasswordUtil.matches(request.getPassword(), doctor.getPassword())) {
@@ -60,7 +76,6 @@ public class DoctorServiceImpl implements DoctorService {
     @Override
     public void save(Doctor doctor) {
         if (doctor.getId() == null) {
-            // 新增时加密密码
             if (doctor.getPassword() != null && !doctor.getPassword().startsWith("$2")) {
                 doctor.setPassword(PasswordUtil.encode(doctor.getPassword()));
             }
@@ -86,7 +101,6 @@ public class DoctorServiceImpl implements DoctorService {
     @Override
     public void batchInsert(List<Doctor> doctors) {
         for (Doctor doctor : doctors) {
-            // 加密密码
             if (doctor.getPassword() != null && !doctor.getPassword().startsWith("$2")) {
                 doctor.setPassword(PasswordUtil.encode(doctor.getPassword()));
             }

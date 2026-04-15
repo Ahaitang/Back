@@ -1,6 +1,6 @@
 package org.hospital.neuroimmune.controller;
 
-import org.hospital.neuroimmune.common.Result;
+import org.hospital.common.model.Result;
 import org.hospital.neuroimmune.service.MinioService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -15,7 +15,7 @@ import java.util.Map;
  * 文件上传控制器
  */
 @RestController
-@RequestMapping("/api/neuroimmune/file")
+@RequestMapping("/api/v1/neuroimmune/file")
 @CrossOrigin
 public class FileController {
 

@@ -1,0 +1,125 @@
+# ============================================
+# Hospital Platform Docker Compose
+# 完整服务编排：MySQL + Redis + 应用
+# ============================================
+
+version: '3.8'
+
+services:
+  # ----------------------
+  # MySQL 数据库
+  # ----------------------
+  mysql:
+    image: mysql:8.0
+    container_name: hospital-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root123456}
+      MYSQL_DATABASE: QMG
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ----------------------
+  # Redis 缓存
+  # ----------------------
+  redis:
+    image: redis:7-alpine
+    container_name: hospital-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ----------------------
+  # MinIO 对象存储
+  # ----------------------
+  minio:
+    image: minio/minio:latest
+    container_name: hospital-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    ports:
+      - "9100:9000"
+      - "9101:9001"
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ----------------------
+  # Hospital Platform 应用
+  # ----------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hospital-platform
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # 数据库配置
+      DB_QMG_URL: jdbc:mysql://mysql:3306/QMG?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true
+      DB_QMG_USER: root
+      DB_QMG_PASSWORD: ${DB_ROOT_PASSWORD:-root123456}
+      DB_NEURO_URL: jdbc:mysql://mysql:3306/neuroimmune?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf8&useSSL=false
+      DB_NEURO_USER: root
+      DB_NEURO_PASSWORD: ${DB_ROOT_PASSWORD:-root123456}
+      # Redis 配置
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      # MinIO 配置
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_BUCKET: neuroimmune
+      # 百度 OCR 配置
+      BAIDU_OCR_APP_ID: ${BAIDU_OCR_APP_ID:-}
+      BAIDU_OCR_API_KEY: ${BAIDU_OCR_API_KEY:-}
+      BAIDU_OCR_SECRET_KEY: ${BAIDU_OCR_SECRET_KEY:-}
+      # Spring Profile
+      SPRING_PROFILES_ACTIVE: prod
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+
+# ----------------------
+# 数据卷
+# ----------------------
+volumes:
+  mysql_data:
+    name: hospital_mysql_data
+  redis_data:
+    name: hospital_redis_data
+  minio_data:
+    name: hospital_minio_data

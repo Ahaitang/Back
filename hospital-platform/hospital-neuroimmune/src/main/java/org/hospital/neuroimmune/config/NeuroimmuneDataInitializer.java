@@ -2,7 +2,7 @@ package org.hospital.neuroimmune.config;
 
 import org.hospital.neuroimmune.entity.Admin;
 import org.hospital.neuroimmune.mapper.AdminMapper;
-import org.hospital.neuroimmune.util.PasswordUtil;
+import org.hospital.common.util.PasswordUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

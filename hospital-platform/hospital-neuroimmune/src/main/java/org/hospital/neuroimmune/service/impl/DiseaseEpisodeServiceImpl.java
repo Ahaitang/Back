@@ -1,10 +1,12 @@
 package org.hospital.neuroimmune.service.impl;
 
-import org.hospital.neuroimmune.dto.PageResult;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import org.hospital.common.model.PageResult;
 import org.hospital.neuroimmune.entity.DiseaseEpisode;
 import org.hospital.neuroimmune.mapper.DiseaseEpisodeMapper;
 import org.hospital.neuroimmune.service.DiseaseEpisodeService;
-import org.hospital.neuroimmune.dto.PageRequest;
+import org.hospital.common.model.PageRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -18,9 +20,20 @@ public class DiseaseEpisodeServiceImpl implements DiseaseEpisodeService {
 
     @Override
     public PageResult<DiseaseEpisode> getList(PageRequest request) {
-        List<DiseaseEpisode> list = diseaseEpisodeMapper.selectList(request);
-        Long total = diseaseEpisodeMapper.selectCount(request);
-        return new PageResult<>(list, total, request.getPageNum(), request.getPageSize());
+        Page<DiseaseEpisode> page = new Page<>(request.getPageNum(), request.getPageSize());
+
+        LambdaQueryWrapper<DiseaseEpisode> wrapper = new LambdaQueryWrapper<>();
+        if (request.getPatientId() != null) {
+            wrapper.eq(DiseaseEpisode::getPatientId, request.getPatientId());
+        }
+        if (request.getKeyword() != null && !request.getKeyword().isEmpty()) {
+            wrapper.and(w -> w.like(DiseaseEpisode::getChiefComplaint, request.getKeyword())
+                    .or().like(DiseaseEpisode::getDiagnosis, request.getKeyword()));
+        }
+        wrapper.orderByDesc(DiseaseEpisode::getEpisodeDate).orderByDesc(DiseaseEpisode::getCreateTime);
+
+        Page<DiseaseEpisode> result = diseaseEpisodeMapper.selectPage(page, wrapper);
+        return new PageResult<>(result.getRecords(), result.getTotal(), request.getPageNum(), request.getPageSize());
     }
 
     @Override
@@ -34,13 +47,13 @@ public class DiseaseEpisodeServiceImpl implements DiseaseEpisodeService {
     }
 
     @Override
+    public Integer countByPatientId(Long patientId) {
+        return diseaseEpisodeMapper.countByPatientId(patientId);
+    }
+
+    @Override
     public void save(DiseaseEpisode episode) {
         if (episode.getId() == null) {
-            // 新增时自动计算发作次数
-            if (episode.getEpisodeNumber() == null && episode.getPatientId() != null) {
-                Integer count = diseaseEpisodeMapper.countByPatientId(episode.getPatientId());
-                episode.setEpisodeNumber(count == null ? 1 : count + 1);
-            }
             diseaseEpisodeMapper.insert(episode);
         } else {
             diseaseEpisodeMapper.updateById(episode);
@@ -50,11 +63,5 @@ public class DiseaseEpisodeServiceImpl implements DiseaseEpisodeService {
     @Override
     public void delete(Long id) {
         diseaseEpisodeMapper.deleteById(id);
-    }
-
-    @Override
-    public Integer countByPatientId(Long patientId) {
-        Integer count = diseaseEpisodeMapper.countByPatientId(patientId);
-        return count == null ? 0 : count;
     }
 }

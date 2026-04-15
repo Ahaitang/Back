@@ -5,7 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.var;
 import org.hospital.qmg.entity.QuestionnaireRecord;
 import org.hospital.qmg.mapper.QuestionnaireRecordMapper;
-import org.hospital.qmg.mapper.PatientMapper;
+import org.hospital.qmg.mapper.QmgPatientMapper;
 import org.hospital.qmg.service.QuestionnaireRecordService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -28,7 +28,7 @@ public class QuestionnaireRecordServiceImpl implements QuestionnaireRecordServic
     private QuestionnaireRecordMapper questionnaireRecordMapper;
 
     @Autowired
-    private PatientMapper patientMapper;
+    private QmgPatientMapper patientMapper;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 

@@ -1,7 +1,7 @@
 package org.hospital.qmg.service;
 
 import org.hospital.qmg.entity.Patient;
-import org.hospital.qmg.pojo.BatchImportResult;
+import org.hospital.common.model.ImportResult;
 
 import java.util.List;
 
@@ -73,5 +73,5 @@ public interface PatientService {
      * @param currentDoctorId 当前操作医生ID，不为空时为导入的患者建立与该医生的关联
      * @return 导入结果（成功数、失败数、失败明细）
      */
-    BatchImportResult batchImport(List<Patient> patients, Integer currentDoctorId);
+    ImportResult batchImport(List<Patient> patients, Integer currentDoctorId);
 }

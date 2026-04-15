@@ -12,6 +12,11 @@ subprojects {
     version = '1.0.0-SNAPSHOT'
     sourceCompatibility = '1.8'
 
+    // 强制使用 UTF-8 编码
+    tasks.withType(JavaCompile) {
+        options.encoding = 'UTF-8'
+    }
+
     repositories {
         mavenCentral()
     }

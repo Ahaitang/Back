@@ -1,7 +1,7 @@
 package org.hospital.neuroimmune.controller;
 
-import org.hospital.neuroimmune.common.Result;
-import org.hospital.neuroimmune.dto.LoginRequest;
+import org.hospital.common.model.Result;
+import org.hospital.common.model.LoginRequest;
 import org.hospital.neuroimmune.entity.Admin;
 import org.hospital.neuroimmune.service.AdminService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,7 +11,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/neuroimmune/admin")
+@RequestMapping("/api/v1/neuroimmune/admin")
 @CrossOrigin
 public class AdminController {
 

@@ -2,7 +2,7 @@ package org.hospital.qmg.controller;
 
 import lombok.extern.slf4j.Slf4j;
 import org.hospital.qmg.entity.QuestionnaireRecord;
-import org.hospital.qmg.pojo.Result;
+import org.hospital.common.model.Result;
 import org.hospital.qmg.service.QuestionnaireRecordService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -17,7 +17,7 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/qmg/questionnaire")
+@RequestMapping("/api/v1/qmg/questionnaire")
 @CrossOrigin(origins = "*")
 public class QuestionnaireRecordController {
 

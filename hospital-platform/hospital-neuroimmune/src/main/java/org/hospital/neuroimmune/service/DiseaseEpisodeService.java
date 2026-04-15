@@ -1,8 +1,8 @@
 package org.hospital.neuroimmune.service;
 
-import org.hospital.neuroimmune.dto.PageResult;
+import org.hospital.common.model.PageResult;
 import org.hospital.neuroimmune.entity.DiseaseEpisode;
-import org.hospital.neuroimmune.dto.PageRequest;
+import org.hospital.common.model.PageRequest;
 import java.util.List;
 
 public interface DiseaseEpisodeService {

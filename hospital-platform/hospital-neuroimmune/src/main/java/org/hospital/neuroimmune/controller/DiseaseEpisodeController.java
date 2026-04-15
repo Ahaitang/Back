@@ -1,8 +1,8 @@
 package org.hospital.neuroimmune.controller;
 
-import org.hospital.neuroimmune.common.Result;
-import org.hospital.neuroimmune.dto.PageRequest;
-import org.hospital.neuroimmune.dto.PageResult;
+import org.hospital.common.model.Result;
+import org.hospital.common.model.PageRequest;
+import org.hospital.common.model.PageResult;
 import org.hospital.neuroimmune.entity.DiseaseEpisode;
 import org.hospital.neuroimmune.service.DiseaseEpisodeService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/neuroimmune/episodes")
+@RequestMapping("/api/v1/neuroimmune/episodes")
 @CrossOrigin
 public class DiseaseEpisodeController {
 

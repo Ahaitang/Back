@@ -1,8 +1,10 @@
 package org.hospital.neuroimmune.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import org.hospital.neuroimmune.dto.PageRequest;
-import org.hospital.neuroimmune.dto.PageResult;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import org.hospital.common.model.PageRequest;
+import org.hospital.common.model.PageResult;
 import org.hospital.neuroimmune.entity.FollowUp;
 import org.hospital.neuroimmune.mapper.FollowUpMapper;
 import org.hospital.neuroimmune.service.FollowUpService;
@@ -31,9 +33,55 @@ public class FollowUpServiceImpl implements FollowUpService {
 
     @Override
     public PageResult<FollowUp> getList(PageRequest request) {
-        List<FollowUp> list = followUpMapper.selectList(request);
-        Long total = followUpMapper.selectCount(request);
-        return new PageResult<>(list, total, request.getPageNum(), request.getPageSize());
+        Page<FollowUp> page = new Page<>(request.getPageNum(), request.getPageSize());
+
+        LambdaQueryWrapper<FollowUp> wrapper = buildQueryWrapper(request);
+        wrapper.orderByDesc(FollowUp::getDate).orderByDesc(FollowUp::getCreateTime);
+
+        Page<FollowUp> result = followUpMapper.selectPage(page, wrapper);
+        return new PageResult<>(result.getRecords(), result.getTotal(), request.getPageNum(), request.getPageSize());
+    }
+
+    @Override
+    public PageResult<FollowUp> getListByDoctorId(Long doctorId, PageRequest request) {
+        Page<FollowUp> page = new Page<>(request.getPageNum(), request.getPageSize());
+
+        LambdaQueryWrapper<FollowUp> wrapper = buildQueryWrapper(request);
+        wrapper.eq(FollowUp::getDoctorId, doctorId);
+        wrapper.orderByDesc(FollowUp::getDate).orderByDesc(FollowUp::getCreateTime);
+
+        Page<FollowUp> result = followUpMapper.selectPage(page, wrapper);
+        return new PageResult<>(result.getRecords(), result.getTotal(), request.getPageNum(), request.getPageSize());
+    }
+
+    private LambdaQueryWrapper<FollowUp> buildQueryWrapper(PageRequest request) {
+        LambdaQueryWrapper<FollowUp> wrapper = new LambdaQueryWrapper<>();
+
+        if (request.getPatientId() != null) {
+            wrapper.eq(FollowUp::getPatientId, request.getPatientId());
+        }
+        if (request.getDoctorId() != null) {
+            wrapper.eq(FollowUp::getDoctorId, request.getDoctorId());
+        }
+        if (request.getKeyword() != null && !request.getKeyword().isEmpty()) {
+            wrapper.and(w -> w.like(FollowUp::getPatientName, request.getKeyword())
+                    .or().like(FollowUp::getDoctorName, request.getKeyword())
+                    .or().like(FollowUp::getProject, request.getKeyword()));
+        }
+        if (request.getStatus() != null && !request.getStatus().isEmpty()) {
+            wrapper.eq(FollowUp::getStatus, request.getStatus());
+        }
+        if (request.getType() != null && !request.getType().isEmpty()) {
+            wrapper.eq(FollowUp::getType, request.getType());
+        }
+        if (request.getStartDate() != null && !request.getStartDate().isEmpty()) {
+            wrapper.ge(FollowUp::getDate, request.getStartDate());
+        }
+        if (request.getEndDate() != null && !request.getEndDate().isEmpty()) {
+            wrapper.le(FollowUp::getDate, request.getEndDate());
+        }
+
+        return wrapper;
     }
 
     @Override
@@ -48,7 +96,6 @@ public class FollowUpServiceImpl implements FollowUpService {
             followUp.setStatus("pending");
         }
         followUp.setStatusText(STATUS_TEXT_MAP.getOrDefault(followUp.getStatus(), followUp.getStatus()));
-
         if (followUp.getId() == null) {
             followUpMapper.insert(followUp);
         } else {
@@ -57,36 +104,21 @@ public class FollowUpServiceImpl implements FollowUpService {
     }
 
     @Override
-    public void updateStatus(Long id, String status) {
-        LambdaUpdateWrapper<FollowUp> updateWrapper = new LambdaUpdateWrapper<>();
-        updateWrapper.eq(FollowUp::getId, id)
-                .set(FollowUp::getStatus, status)
-                .set(FollowUp::getStatusText, STATUS_TEXT_MAP.getOrDefault(status, status));
-        followUpMapper.update(null, updateWrapper);
-    }
-
-    @Override
+    @CacheEvict(value = {"neuro-followup", "neuro-stats"}, allEntries = true)
     public void delete(Long id) {
         followUpMapper.deleteById(id);
     }
 
     @Override
-    @Cacheable(value = "neuro-stats", key = "'pending:total'")
+    @Cacheable(value = "neuro-stats", key = "'followup:pending'")
     public Long getPendingCount() {
         return followUpMapper.selectPendingCount();
     }
 
     @Override
-    @Cacheable(value = "neuro-stats", key = "'pending:doctor:' + #doctorId")
+    @Cacheable(value = "neuro-stats", key = "'followup:pending:doctor:' + #doctorId")
     public Long getPendingCountByDoctorId(Long doctorId) {
         return followUpMapper.selectPendingCountByDoctorId(doctorId);
-    }
-
-    @Override
-    public PageResult<FollowUp> getListByDoctorId(Long doctorId, PageRequest request) {
-        List<FollowUp> list = followUpMapper.selectListByDoctorId(doctorId, request);
-        Long total = followUpMapper.selectCountByDoctorId(doctorId, request);
-        return new PageResult<>(list, total, request.getPageNum(), request.getPageSize());
     }
 
     @Override
@@ -96,9 +128,26 @@ public class FollowUpServiceImpl implements FollowUpService {
 
     @Override
     public Long getPendingCountByPatientId(Long patientId) {
-        PageRequest request = new PageRequest();
-        request.setPatientId(patientId);
-        request.setStatus("pending");
-        return followUpMapper.selectCount(request);
+        LambdaQueryWrapper<FollowUp> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(FollowUp::getPatientId, patientId)
+               .eq(FollowUp::getStatus, "pending");
+        return followUpMapper.selectCount(wrapper);
+    }
+
+    @Override
+    @CacheEvict(value = {"neuro-followup", "neuro-stats"}, allEntries = true)
+    public void updateStatus(Long id, String status) {
+        FollowUp followUp = new FollowUp();
+        followUp.setId(id);
+        followUp.setStatus(status);
+        followUp.setStatusText(STATUS_TEXT_MAP.getOrDefault(status, status));
+        followUpMapper.updateById(followUp);
+    }
+
+    @Override
+    public Long countByPatientId(Long patientId) {
+        LambdaQueryWrapper<FollowUp> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(FollowUp::getPatientId, patientId);
+        return followUpMapper.selectCount(wrapper);
     }
 }

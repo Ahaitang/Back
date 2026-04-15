@@ -1,14 +1,14 @@
 package org.hospital.neuroimmune.controller;
 
-import org.hospital.neuroimmune.common.Result;
+import org.hospital.common.model.Result;
 import org.hospital.neuroimmune.entity.PatientDoctorRelation;
 import org.hospital.neuroimmune.entity.Patient;
 import org.hospital.neuroimmune.service.PatientDoctorRelationService;
 import org.hospital.neuroimmune.service.PatientService;
 import org.hospital.neuroimmune.service.DoctorService;
 import org.hospital.neuroimmune.entity.Doctor;
-import org.hospital.neuroimmune.dto.PageRequest;
-import org.hospital.neuroimmune.dto.PageResult;
+import org.hospital.common.model.PageRequest;
+import org.hospital.common.model.PageResult;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,7 +16,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/neuroimmune/relation")
+@RequestMapping("/api/v1/neuroimmune/relation")
 public class PatientDoctorRelationController {
 
     @Autowired

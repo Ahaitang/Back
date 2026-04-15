@@ -3,8 +3,8 @@ package org.hospital.qmg.service.impl;
 import lombok.extern.slf4j.Slf4j;
 import org.hospital.qmg.entity.Doctor;
 import org.hospital.qmg.entity.Patient;
-import org.hospital.qmg.mapper.PatientMapper;
-import org.hospital.qmg.pojo.BatchImportResult;
+import org.hospital.qmg.mapper.QmgPatientMapper;
+import org.hospital.common.model.ImportResult;
 import org.hospital.qmg.service.PatientService;
 import org.hospital.qmg.service.PatientDoctorService;
 import org.hospital.qmg.service.DoctorService;
@@ -22,11 +22,11 @@ import java.util.List;
  * 患者Service实现类
  */
 @Slf4j
-@Service
+@Service("qmgPatientService")
 public class PatientServiceImpl implements PatientService {
 
     @Autowired
-    private PatientMapper patientMapper;
+    private QmgPatientMapper patientMapper;
     
     @Autowired
     private PatientDoctorService patientDoctorService;
@@ -151,8 +151,9 @@ public class PatientServiceImpl implements PatientService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public BatchImportResult batchImport(List<Patient> patients, Integer currentDoctorId) {
-        BatchImportResult result = new BatchImportResult(0, 0, new java.util.ArrayList<>());
+    public ImportResult batchImport(List<Patient> patients, Integer currentDoctorId) {
+        ImportResult result = new ImportResult();
+        result.setTotal(patients != null ? patients.size() : 0);
         if (patients == null || patients.isEmpty()) {
             return result;
         }
@@ -160,38 +161,31 @@ public class PatientServiceImpl implements PatientService {
             int row = i + 1;
             Patient p = patients.get(i);
             if (p == null) {
-                result.setFailCount(result.getFailCount() + 1);
                 result.addError(row, "数据为空");
                 continue;
             }
             if (p.getName() == null || p.getName().trim().isEmpty()) {
-                result.setFailCount(result.getFailCount() + 1);
                 result.addError(row, "姓名为空");
                 continue;
             }
             if (p.getGender() == null || p.getGender().trim().isEmpty()) {
-                result.setFailCount(result.getFailCount() + 1);
                 result.addError(row, "性别为空");
                 continue;
             }
             if (!"male".equals(p.getGender()) && !"female".equals(p.getGender())) {
-                result.setFailCount(result.getFailCount() + 1);
                 result.addError(row, "性别必须为 male 或 female");
                 continue;
             }
             if (p.getAdmissionNumber() == null || p.getAdmissionNumber().trim().isEmpty()) {
-                result.setFailCount(result.getFailCount() + 1);
                 result.addError(row, "住院号为空");
                 continue;
             }
             if (p.getPhone() == null || p.getPhone().trim().isEmpty()) {
-                result.setFailCount(result.getFailCount() + 1);
                 result.addError(row, "联系电话为空");
                 continue;
             }
             Patient existing = findByAdmissionNumber(p.getAdmissionNumber());
             if (existing != null) {
-                result.setFailCount(result.getFailCount() + 1);
                 result.addError(row, "住院号已存在: " + p.getAdmissionNumber());
                 continue;
             }
@@ -200,10 +194,9 @@ public class PatientServiceImpl implements PatientService {
                 if (currentDoctorId != null) {
                     patientDoctorService.addMapping(p.getId(), currentDoctorId);
                 }
-                result.setSuccessCount(result.getSuccessCount() + 1);
+                result.success();
             } catch (Exception e) {
                 log.warn("批量导入第{}行失败: {}", row, e.getMessage());
-                result.setFailCount(result.getFailCount() + 1);
                 result.addError(row, e.getMessage() != null ? e.getMessage() : "保存失败");
             }
         }

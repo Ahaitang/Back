@@ -1,8 +1,8 @@
 package org.hospital.neuroimmune.service;
 
 import org.hospital.neuroimmune.entity.FollowUp;
-import org.hospital.neuroimmune.dto.PageRequest;
-import org.hospital.neuroimmune.dto.PageResult;
+import org.hospital.common.model.PageRequest;
+import org.hospital.common.model.PageResult;
 import java.util.List;
 
 public interface FollowUpService {
@@ -16,4 +16,5 @@ public interface FollowUpService {
     Long getPendingCountByDoctorId(Long doctorId);
     Long getPendingCountByPatientId(Long patientId);
     List<FollowUp> getPendingByDoctorId(Long doctorId);
+    Long countByPatientId(Long patientId);
 }

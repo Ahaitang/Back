@@ -4,8 +4,8 @@ import org.hospital.neuroimmune.entity.PatientDoctorRelation;
 import org.hospital.neuroimmune.entity.Patient;
 import org.hospital.neuroimmune.entity.Doctor;
 import org.hospital.neuroimmune.mapper.PatientDoctorRelationMapper;
-import org.hospital.neuroimmune.mapper.PatientMapper;
-import org.hospital.neuroimmune.mapper.DoctorMapper;
+import org.hospital.neuroimmune.mapper.NeuroimmunePatientMapper;
+import org.hospital.neuroimmune.mapper.NeuroimmuneDoctorMapper;
 import org.hospital.neuroimmune.service.PatientDoctorRelationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -21,10 +21,10 @@ public class PatientDoctorRelationServiceImpl implements PatientDoctorRelationSe
     private PatientDoctorRelationMapper relationMapper;
 
     @Autowired
-    private PatientMapper patientMapper;
+    private NeuroimmunePatientMapper patientMapper;
 
     @Autowired
-    private DoctorMapper doctorMapper;
+    private NeuroimmuneDoctorMapper doctorMapper;
 
     @Override
     @Transactional
@@ -140,7 +140,7 @@ public class PatientDoctorRelationServiceImpl implements PatientDoctorRelationSe
 
     @Override
     public List<PatientDoctorRelation> getList(String patientName, String doctorName, String status) {
-        return relationMapper.selectList(patientName, doctorName, status);
+        return relationMapper.selectRelationList(patientName, doctorName, status);
     }
 
     @Override

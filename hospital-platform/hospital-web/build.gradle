@@ -9,6 +9,11 @@ dependencies {
     implementation project(':hospital-ocr')
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-cache'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    // OpenAPI/Swagger 文档
+    implementation 'org.springdoc:springdoc-openapi-ui:1.7.0'
+    // Ensure okhttp 4.x for MinIO compatibility
+    implementation 'com.squareup.okhttp3:okhttp:4.10.0'
 }
 
 bootJar {
