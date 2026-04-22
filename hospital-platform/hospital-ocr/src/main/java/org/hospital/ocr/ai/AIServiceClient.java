@@ -1,4 +1,4 @@
-package org.hospital.common.ai;
+package org.hospital.ocr.ai;
 
 import lombok.extern.slf4j.Slf4j;
 import org.hospital.ocr.service.BaiduOcrService;
