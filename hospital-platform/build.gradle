@@ -10,7 +10,7 @@ subprojects {
 
     group = 'org.hospital'
     version = '1.0.0-SNAPSHOT'
-    sourceCompatibility = '1.8'
+    sourceCompatibility = '17'
 
     // 强制使用 UTF-8 编码
     tasks.withType(JavaCompile) {
