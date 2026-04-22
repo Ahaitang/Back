@@ -34,4 +34,9 @@ public class OcrResult {
      * 结构化数据（身份证、银行卡等）
      */
     private Object data;
+
+    /**
+     * 来源（baidu、paddleocr-vl-cloud、paddleocr-local等）
+     */
+    private String source;
 }

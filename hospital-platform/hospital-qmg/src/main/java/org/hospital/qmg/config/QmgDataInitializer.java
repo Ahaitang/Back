@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.hospital.qmg.entity.Doctor;
 import org.hospital.qmg.mapper.QmgDoctorMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -23,6 +24,10 @@ public class QmgDataInitializer implements CommandLineRunner {
 
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
+    // 从环境变量读取默认密码
+    @Value("${admin.default.password:}")
+    private String defaultPassword;
+
     @Override
     public void run(String... args) throws Exception {
         log.info("开始初始化默认数据...");
@@ -38,19 +43,24 @@ public class QmgDataInitializer implements CommandLineRunner {
         try {
             // 检查 admin 用户是否已存在
             Doctor existingAdmin = doctorMapper.findByUsername("admin");
-            
+
             if (existingAdmin == null) {
                 // 创建 admin 用户
                 Doctor admin = new Doctor();
                 admin.setEmployeeNumber("EMP000001");
                 admin.setUsername("admin");
-                admin.setPassword(passwordEncoder.encode("123456")); // 密码：123456
+                // 如果环境变量配置了密码则使用，否则生成随机密码
+                String password = (defaultPassword != null && !defaultPassword.isEmpty())
+                    ? defaultPassword
+                    : generateRandomPassword();
+                admin.setPassword(passwordEncoder.encode(password));
                 admin.setLevel(0); // 超级管理员
                 admin.setCreateTime(LocalDateTime.now());
                 admin.setUpdateTime(LocalDateTime.now());
-                
+
                 doctorMapper.insert(admin);
-                log.info("✅ 成功创建默认管理员账号: username=admin, password=123456, employeeNumber=EMP000001");
+                log.info("✅ 成功创建默认管理员账号: username=admin, password={}, employeeNumber=EMP000001", password);
+                log.warn("⚠️ 请登录后立即修改默认密码！");
             } else {
                 // 检查是否需要更新工号（兼容旧数据）
                 if (existingAdmin.getEmployeeNumber() == null || existingAdmin.getEmployeeNumber().trim().isEmpty()) {
@@ -65,5 +75,18 @@ public class QmgDataInitializer implements CommandLineRunner {
         } catch (Exception e) {
             log.error("❌ 初始化 admin 用户失败: {}", e.getMessage(), e);
         }
+    }
+
+    /**
+     * 生成随机密码（8位）
+     */
+    private String generateRandomPassword() {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        StringBuilder sb = new StringBuilder();
+        java.security.SecureRandom random = new java.security.SecureRandom();
+        for (int i = 0; i < 8; i++) {
+            sb.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return sb.toString();
     }
 }

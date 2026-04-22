@@ -110,7 +110,7 @@ public class ExcelUtil {
             exampleRow.createCell(2).setCellValue("神经内科");
             exampleRow.createCell(3).setCellValue("XX医院");
             exampleRow.createCell(4).setCellValue("13800138000");
-            exampleRow.createCell(5).setCellValue("123456");
+            exampleRow.createCell(5).setCellValue("(系统自动生成)");  // 提示密码自动生成
 
             workbook.write(out);
             return out.toByteArray();
@@ -149,7 +149,7 @@ public class ExcelUtil {
             exampleRow.createCell(2).setCellValue("45");
             exampleRow.createCell(3).setCellValue("13900139000");
             exampleRow.createCell(4).setCellValue("110101199001011234");
-            exampleRow.createCell(5).setCellValue("123456");
+            exampleRow.createCell(5).setCellValue("(系统自动生成)");  // 提示密码自动生成
             exampleRow.createCell(6).setCellValue("13800138000");
 
             workbook.write(out);

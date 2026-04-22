@@ -33,6 +33,10 @@ public class BaiduOcrService {
     // 百度OCR API基础URL
     private static final String OCR_API_BASE = "https://aip.baidubce.com/rest/2.0/ocr/v1/";
 
+    // PaddleOCR-VL 文档解析 API URL（异步任务模式）
+    private static final String VL_PARSER_TASK_URL = "https://aip.baidubce.com/rest/2.0/brain/online/v2/paddle-vl-parser/task";
+    private static final String VL_PARSER_QUERY_URL = "https://aip.baidubce.com/rest/2.0/brain/online/v2/paddle-vl-parser/task/query";
+
     // Access Token缓存
     private String accessToken;
     private long tokenExpireTime;
@@ -87,8 +91,8 @@ public class BaiduOcrService {
     }
 
     /**
-     * 使用PaddleOCR-VL进行通用识别（免费API）
-     * 可直接调用，也可作为其他API的fallback
+     * 使用PaddleOCR-VL进行文档解析（免费API - 异步任务模式）
+     * 流程：提交任务 → 获取taskId → 轮询查询结果
      */
     public OcrResult paddleOcrVl(MultipartFile file, String prompt) {
         try {
@@ -100,42 +104,34 @@ public class BaiduOcrService {
                 return ocrResult;
             }
 
-            // 调用PaddleOCR-VL API
-            String apiUrl = OCR_API_BASE + "paddle_ocr_vl?access_token=" + token;
-
-            byte[] imageData = file.getBytes();
-            String imageBase64 = Base64.getEncoder().encodeToString(imageData);
-
-            // 构建请求体
-            StringBuilder params = new StringBuilder();
-            params.append("image=").append(URLEncoder.encode(imageBase64, "UTF-8"));
-            if (prompt != null && !prompt.isEmpty()) {
-                params.append("&prompt=").append(URLEncoder.encode(prompt, "UTF-8"));
+            // Step 1: 提交任务
+            String taskId = submitVlParserTask(token, file, prompt);
+            if (taskId == null) {
+                OcrResult ocrResult = new OcrResult();
+                ocrResult.setSuccess(false);
+                ocrResult.setErrorMsg("提交文档解析任务失败");
+                return ocrResult;
             }
 
-            URL url = new URL(apiUrl);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.setRequestMethod("POST");
-            connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-            connection.setDoOutput(true);
-            connection.setConnectTimeout(config.getConnectTimeout());
-            connection.setReadTimeout(config.getReadTimeout());
+            log.info("PaddleOCR-VL任务提交成功，taskId: {}", taskId);
 
-            OutputStream os = connection.getOutputStream();
-            os.write(params.toString().getBytes("UTF-8"));
-            os.close();
-
-            InputStream is = connection.getInputStream();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-            StringBuilder result = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                result.append(line);
+            // Step 2: 轮询查询结果（最多等待30秒）
+            int maxRetries = 15;
+            int retryInterval = 2000; // 2秒
+            for (int i = 0; i < maxRetries; i++) {
+                Thread.sleep(retryInterval);
+                OcrResult result = queryVlParserTask(token, taskId);
+                if (result != null) {
+                    return result;
+                }
             }
-            reader.close();
 
-            JSONObject jsonResult = new JSONObject(result.toString());
-            return parsePaddleOcrVlResult(jsonResult);
+            // 超时
+            OcrResult ocrResult = new OcrResult();
+            ocrResult.setSuccess(false);
+            ocrResult.setErrorMsg("文档解析任务超时");
+            return ocrResult;
+
         } catch (Exception e) {
             log.error("PaddleOCR-VL识别失败", e);
             OcrResult ocrResult = new OcrResult();
@@ -146,51 +142,137 @@ public class BaiduOcrService {
     }
 
     /**
-     * 解析PaddleOCR-VL结果
+     * 提交PaddleOCR-VL文档解析任务
      */
-    private OcrResult parsePaddleOcrVlResult(JSONObject result) {
-        OcrResult ocrResult = new OcrResult();
+    private String submitVlParserTask(String token, MultipartFile file, String prompt) throws Exception {
+        String apiUrl = VL_PARSER_TASK_URL + "?access_token=" + token;
 
-        if (result.has("error_code")) {
-            ocrResult.setSuccess(false);
-            ocrResult.setErrorMsg(result.optString("error_msg", "识别失败"));
-            return ocrResult;
+        byte[] imageData = file.getBytes();
+        String imageBase64 = Base64.getEncoder().encodeToString(imageData);
+
+        // 构建请求体
+        JSONObject requestBody = new JSONObject();
+        requestBody.put("image", imageBase64);
+        if (prompt != null && !prompt.isEmpty()) {
+            requestBody.put("prompt", prompt);
         }
 
-        ocrResult.setSuccess(true);
+        URL url = new URL(apiUrl);
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setRequestMethod("POST");
+        connection.setRequestProperty("Content-Type", "application/json");
+        connection.setDoOutput(true);
+        connection.setConnectTimeout(config.getConnectTimeout());
+        connection.setReadTimeout(config.getReadTimeout());
 
-        // PaddleOCR-VL返回格式可能不同，尝试多种解析方式
-        JSONArray wordsResult = result.optJSONArray("words_result");
-        if (wordsResult != null) {
-            List<String> words = new ArrayList<>();
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < wordsResult.length(); i++) {
-                JSONObject item = wordsResult.optJSONObject(i);
-                if (item != null) {
-                    String word = item.optString("words", "");
-                    words.add(word);
-                    if (sb.length() > 0) {
-                        sb.append("\n");
+        OutputStream os = connection.getOutputStream();
+        os.write(requestBody.toString().getBytes("UTF-8"));
+        os.close();
+
+        int responseCode = connection.getResponseCode();
+        if (responseCode != 200) {
+            log.error("提交任务失败，响应码: {}", responseCode);
+            return null;
+        }
+
+        InputStream is = connection.getInputStream();
+        BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+        StringBuilder result = new StringBuilder();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            result.append(line);
+        }
+        reader.close();
+
+        JSONObject jsonResult = new JSONObject(result.toString());
+        if (jsonResult.has("error_code")) {
+            log.error("提交任务失败: {}", jsonResult.optString("error_msg"));
+            return null;
+        }
+
+        return jsonResult.optString("task_id");
+    }
+
+    /**
+     * 查询PaddleOCR-VL文档解析任务结果
+     */
+    private OcrResult queryVlParserTask(String token, String taskId) throws Exception {
+        String apiUrl = VL_PARSER_QUERY_URL + "?access_token=" + token;
+
+        // 构建请求体
+        JSONObject requestBody = new JSONObject();
+        requestBody.put("task_id", taskId);
+
+        URL url = new URL(apiUrl);
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setRequestMethod("POST");
+        connection.setRequestProperty("Content-Type", "application/json");
+        connection.setDoOutput(true);
+        connection.setConnectTimeout(config.getConnectTimeout());
+        connection.setReadTimeout(config.getReadTimeout());
+
+        OutputStream os = connection.getOutputStream();
+        os.write(requestBody.toString().getBytes("UTF-8"));
+        os.close();
+
+        InputStream is = connection.getInputStream();
+        BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+        StringBuilder result = new StringBuilder();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            result.append(line);
+        }
+        reader.close();
+
+        JSONObject jsonResult = new JSONObject(result.toString());
+
+        // 检查错误
+        if (jsonResult.has("error_code")) {
+            log.warn("查询任务失败: {}", jsonResult.optString("error_msg"));
+            return null;
+        }
+
+        // 检查任务状态
+        int retCode = jsonResult.optInt("ret_code", -1);
+        if (retCode == 0) {
+            // 任务完成
+            OcrResult ocrResult = new OcrResult();
+            ocrResult.setSuccess(true);
+
+            JSONObject resultData = jsonResult.optJSONObject("result");
+            if (resultData != null) {
+                String text = resultData.optString("text", "");
+                ocrResult.setFullText(text);
+                if (!text.isEmpty()) {
+                    String[] lines = text.split("\n");
+                    ocrResult.setWords(Arrays.asList(lines));
+                }
+
+                // 解析结构化数据
+                JSONObject structData = resultData.optJSONObject("struct_data");
+                if (structData != null) {
+                    Map<String, Object> dataMap = new HashMap<>();
+                    for (String key : structData.keySet()) {
+                        dataMap.put(key, structData.get(key));
                     }
-                    sb.append(word);
+                    ocrResult.setData(dataMap);
                 }
             }
-            ocrResult.setWords(words);
-            ocrResult.setFullText(sb.toString());
-        }
 
-        // 尝试解析VL特有的结果格式
-        JSONObject vlResult = result.optJSONObject("result");
-        if (vlResult != null) {
-            String text = vlResult.optString("text", "");
-            if (!text.isEmpty()) {
-                ocrResult.setFullText(text);
-                String[] lines = text.split("\n");
-                ocrResult.setWords(Arrays.asList(lines));
-            }
+            ocrResult.setSource("paddleocr-vl-cloud");
+            return ocrResult;
+        } else if (retCode == 1) {
+            // 任务进行中
+            log.info("任务进行中，taskId: {}", taskId);
+            return null;
+        } else {
+            // 任务失败
+            log.error("任务失败，ret_code: {}, ret_msg: {}", retCode, jsonResult.optString("ret_msg"));
+            OcrResult ocrResult = new OcrResult();
+            ocrResult.setSuccess(false);
+            ocrResult.setErrorMsg(jsonResult.optString("ret_msg", "任务处理失败"));
+            return ocrResult;
         }
-
-        return ocrResult;
     }
 
     /**

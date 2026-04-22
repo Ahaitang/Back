@@ -17,6 +17,8 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
+import java.security.SecureRandom;
 
 @RestController
 @RequestMapping("/api/v1/neuroimmune/import")
@@ -83,7 +85,9 @@ public class ImportController {
                     String department = row.size() > 2 ? row.get(2).trim() : "";
                     String hospital = row.size() > 3 ? row.get(3).trim() : "";
                     String phone = row.size() > 4 ? row.get(4).trim() : "";
-                    String password = row.size() > 5 ? row.get(5).trim() : "123456";
+                    String password = row.size() > 5 && !row.get(5).trim().isEmpty()
+                        ? row.get(5).trim()
+                        : generateRandomPassword();  // 生成随机密码而非硬编码
 
                     // 验证必填字段
                     if (name.isEmpty()) {
@@ -160,7 +164,9 @@ public class ImportController {
                     String ageStr = row.size() > 2 ? row.get(2).trim() : "";
                     String phone = row.size() > 3 ? row.get(3).trim() : "";
                     String idCard = row.size() > 4 ? row.get(4).trim() : "";
-                    String password = row.size() > 5 ? row.get(5).trim() : "123456";
+                    String password = row.size() > 5 && !row.get(5).trim().isEmpty()
+                        ? row.get(5).trim()
+                        : generateRandomPassword();  // 生成随机密码而非硬编码
                     String doctorPhone = row.size() > 6 ? row.get(6).trim() : "";
 
                     // 验证必填字段
@@ -229,5 +235,18 @@ public class ImportController {
         } catch (IOException e) {
             return Result.error("读取文件失败: " + e.getMessage());
         }
+    }
+
+    /**
+     * 生成随机密码（8位，包含字母和数字）
+     */
+    private String generateRandomPassword() {
+        SecureRandom random = new SecureRandom();
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 8; i++) {
+            sb.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return sb.toString();
     }
 }

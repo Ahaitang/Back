@@ -250,17 +250,28 @@ public class QuestionnaireRecordServiceImpl implements QuestionnaireRecordServic
     @Transactional
     public QuestionnaireRecord update(Map<String, Object> recordData) {
         try {
-            // 获取记录ID
-            Integer id = ((Number) recordData.get("id")).intValue();
+            // 获取记录ID（空值检查）
+            Object idObj = recordData.get("id");
+            if (idObj == null) {
+                throw new RuntimeException("记录ID不能为空");
+            }
+            Integer id = ((Number) idObj).intValue();
             QuestionnaireRecord record = questionnaireRecordMapper.findById(id);
             if (record == null) {
                 throw new RuntimeException("问卷结果不存在，ID: " + id);
             }
 
-            // 解析患者信息
+            // 解析患者信息（空值检查）
             @SuppressWarnings("unchecked")
             Map<String, Object> patientMap = (Map<String, Object>) recordData.get("patient");
-            String admissionNumber = (String) patientMap.get("admissionNumber");
+            if (patientMap == null) {
+                throw new RuntimeException("缺少患者信息(patient)");
+            }
+            Object admissionNumberObj = patientMap.get("admissionNumber");
+            String admissionNumber = admissionNumberObj != null ? admissionNumberObj.toString().trim() : null;
+            if (admissionNumber == null || admissionNumber.isEmpty()) {
+                throw new RuntimeException("患者住院号不能为空");
+            }
 
             // 根据住院号查找患者ID
             var patient = patientMapper.findByAdmissionNumber(admissionNumber);
@@ -278,25 +289,32 @@ public class QuestionnaireRecordServiceImpl implements QuestionnaireRecordServic
             Object selections = recordData.get("selections");
             record.setSelections(objectMapper.writeValueAsString(selections));
 
-            // 得分信息
+            // 得分信息（空值检查）
             @SuppressWarnings("unchecked")
-            Map<String, Object> scoreMap = (Map<String, Object>) recordData.get("score");
-            
-            // 各项得分
-            Object itemScores = scoreMap.get("itemScores");
-            record.setItemScores(objectMapper.writeValueAsString(itemScores));
-            
-            // 总分
-            Object totalScore = scoreMap.get("totalScore");
-            if (totalScore instanceof Number) {
-                record.setTotalScore(((Number) totalScore).intValue());
+            Map<String, Object> scoreMap = recordData.get("score") != null
+                ? (Map<String, Object>) recordData.get("score") : null;
+
+            if (scoreMap != null) {
+                // 各项得分
+                Object itemScores = scoreMap.get("itemScores");
+                record.setItemScores(itemScores != null ? objectMapper.writeValueAsString(itemScores) : "{}");
+
+                // 总分
+                Object totalScore = scoreMap.get("totalScore");
+                if (totalScore instanceof Number) {
+                    record.setTotalScore(((Number) totalScore).intValue());
+                } else {
+                    record.setTotalScore(0);
+                }
+
+                // 分类得分
+                Object categoryScores = scoreMap.get("categoryScores");
+                record.setCategoryScores(categoryScores != null ? objectMapper.writeValueAsString(categoryScores) : "{}");
             } else {
+                record.setItemScores("{}");
                 record.setTotalScore(0);
+                record.setCategoryScores("{}");
             }
-            
-            // 分类得分
-            Object categoryScores = scoreMap.get("categoryScores");
-            record.setCategoryScores(objectMapper.writeValueAsString(categoryScores));
 
             // 医生信息（如果有）
             Integer doctorId = (Integer) recordData.get("doctorId");

@@ -1,0 +1,199 @@
+# ============================================
+# Hospital Platform Docker Compose (Production)
+# Uses absolute paths for server deployment
+# ============================================
+
+services:
+  # ============================================
+  # MySQL Database
+  # ============================================
+  mysql:
+    image: mysql:8.0
+    container_name: hospital-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-hospital2024}
+      MYSQL_DATABASE: init
+      TZ: Asia/Shanghai
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - /opt/app/hospital-platform/Back/hospital-platform/sql:/docker-entrypoint-initdb.d:ro
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+      - --max_connections=500
+      - --innodb_buffer_pool_size=256M
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-hospital2024}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - hospital-network
+
+  # ============================================
+  # Redis Cache
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: hospital-redis
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-hospital2024}
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-hospital2024}", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - hospital-network
+
+  # ============================================
+  # MinIO Object Storage
+  # ============================================
+  minio:
+    image: minio/minio:latest
+    container_name: hospital-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+      TZ: Asia/Shanghai
+    ports:
+      - "${MINIO_API_PORT:-9100}:9000"
+      - "${MINIO_CONSOLE_PORT:-9101}:9001"
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - hospital-network
+
+  # ============================================
+  # Backend Service (Spring Boot)
+  # ============================================
+  backend:
+    image: docker-backend:latest
+    container_name: hospital-backend
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      SPRING_PROFILES_ACTIVE: prod
+      DB_QMG_URL: jdbc:mysql://mysql:3306/QMG?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=utf8
+      DB_QMG_USER: root
+      DB_QMG_PASSWORD: ${MYSQL_ROOT_PASSWORD:-hospital2024}
+      DB_NEURO_URL: jdbc:mysql://mysql:3306/neuroimmune?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=utf8
+      DB_NEURO_USER: root
+      DB_NEURO_PASSWORD: ${MYSQL_ROOT_PASSWORD:-hospital2024}
+      DB_SESSION_URL: jdbc:mysql://mysql:3306/session_audit?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=utf8
+      DB_SESSION_USER: root
+      DB_SESSION_PASSWORD: ${MYSQL_ROOT_PASSWORD:-hospital2024}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-hospital2024}
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-neuroimmune}
+      JWT_SECRET: ${JWT_SECRET:-hospital-platform-jwt-secret-key-2024-secure-production}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
+      SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD:-admin123}
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
+      JAVA_OPTS: -Xms512m -Xmx1024m -XX:+UseG1GC -XX:MaxGCPauseMillis=200
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    volumes:
+      - backend_logs:/app/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - hospital-network
+
+  # ============================================
+  # QMG Admin Frontend (Vue 3)
+  # ============================================
+  qmg-admin:
+    build:
+      context: /opt/app/hospital-platform/Front/qmg-admin
+      dockerfile: /opt/app/hospital-platform/Back/hospital-platform/docker/frontend-admin/Dockerfile.prod
+    container_name: hospital-qmg-admin
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    expose:
+      - "80"
+    depends_on:
+      - backend
+    networks:
+      - hospital-network
+
+  # ============================================
+  # Neuroimmune Admin Frontend (Vue 3)
+  # ============================================
+  neuroimmune-admin:
+    build:
+      context: /opt/app/hospital-platform/Front/neuroimmune-admin
+      dockerfile: /opt/app/hospital-platform/Back/hospital-platform/docker/frontend-admin/Dockerfile
+    container_name: hospital-neuroimmune-admin
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    expose:
+      - "80"
+    depends_on:
+      - backend
+    networks:
+      - hospital-network
+
+  # ============================================
+  # Portal Navigation Page
+  # ============================================
+  portal:
+    build:
+      context: /opt/app/hospital-platform/Back/hospital-platform/docker/portal
+      dockerfile: Dockerfile
+    container_name: hospital-portal
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "${PORTAL_PORT:-80}:80"
+    depends_on:
+      - backend
+      - qmg-admin
+      - neuroimmune-admin
+    networks:
+      - hospital-network
+
+networks:
+  hospital-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+    name: hospital-mysql-data
+  redis_data:
+    name: hospital-redis-data
+  minio_data:
+    name: hospital-minio-data
+  backend_logs:
+    name: hospital-backend-logs

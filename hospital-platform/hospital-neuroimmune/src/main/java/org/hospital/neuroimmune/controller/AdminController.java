@@ -23,16 +23,23 @@ public class AdminController {
         Admin admin = adminService.login(request);
         if (admin != null) {
             Map<String, Object> data = new HashMap<>();
-            data.put("token", "mock-token-" + admin.getId());
+            // TODO: 使用真实JWT token生成，当前为临时方案
+            // 实际应调用JWT服务生成token: jwtService.generateToken(admin)
+            data.put("token", generateSecureToken(admin.getId()));
             data.put("admin", admin);
+            data.put("role", "admin");  // 角色由后端确定
             return Result.success(data);
         }
         return Result.error(401, "用户名或密码错误");
     }
 
-    @GetMapping("/info")
-    public Result<Admin> info(@RequestParam Long id) {
-        Admin admin = adminService.getById(id);
-        return Result.success(admin);
+    // 临时token生成方法（应替换为真实JWT）
+    private String generateSecureToken(Long userId) {
+        // 生产环境必须使用JWT库生成真实token
+        // 此方法仅用于过渡，不建议生产使用
+        return java.util.UUID.randomUUID().toString() + "-" + userId + "-" + System.currentTimeMillis();
     }
+
+    // 注意: /info接口已移除，应通过token验证获取用户信息
+    // 如需查询用户信息，应在其他需要认证的接口中处理
 }

@@ -32,3 +32,10 @@ management:
 logging:
   level:
     org.hospital: DEBUG
+
+# 超级管理员配置
+super-admin:
+  accounts:
+    - username: admin
+      password: ${SUPER_ADMIN_PASSWORD:}
+      name: 超级管理员

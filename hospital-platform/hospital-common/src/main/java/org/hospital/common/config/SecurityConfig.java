@@ -41,15 +41,16 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .antMatchers(
                     "/api/v1/**/login",           // 登录接口
                     "/api/v1/**/register",        // 注册接口
-                    "/api/v1/neuroimmune/import/**", // 导入模板下载
-                    "/api/v1/neuroimmune/file/**",   // 文件下载（部分公开）
-                    "/actuator/**",                // 健康检查
-                    "/swagger-ui.html",            // Swagger UI 入口页面
-                    "/swagger-ui/**",              // Swagger UI 资源
-                    "/v3/api-docs/**",             // API 文档
-                    "/swagger-resources/**",       // Swagger 资源
-                    "/webjars/**"                  // Web 资源
+                    "/api/v1/super-admin/login",  // 超级管理员登录（仅登录公开）
+                    "/actuator/health",           // 健康检查（仅health端点）
+                    "/swagger-ui.html",           // Swagger UI 入口页面
+                    "/swagger-ui/**",             // Swagger UI 资源
+                    "/v3/api-docs/**",            // API 文档
+                    "/swagger-resources/**",      // Swagger 资源
+                    "/webjars/**"                 // Web 资源
                 ).permitAll()
+                // 导入模板下载需要认证（移除permitAll）
+                // 文件上传需要认证（移除permitAll）
                 // 其他接口需要认证
                 .anyRequest().authenticated()
             .and()
