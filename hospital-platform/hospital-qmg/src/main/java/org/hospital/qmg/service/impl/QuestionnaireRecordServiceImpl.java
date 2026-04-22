@@ -2,7 +2,6 @@ package org.hospital.qmg.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import lombok.var;
 import org.hospital.qmg.entity.QuestionnaireRecord;
 import org.hospital.qmg.mapper.QuestionnaireRecordMapper;
 import org.hospital.qmg.mapper.QmgPatientMapper;

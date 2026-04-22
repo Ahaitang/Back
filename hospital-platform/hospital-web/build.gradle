@@ -18,4 +18,5 @@ dependencies {
 
 bootJar {
     archiveFileName = 'hospital-platform.jar'
+    mainClass = 'org.hospital.HospitalApplication'
 }

@@ -39,4 +39,11 @@ public class OcrResult {
      * 来源（baidu、paddleocr-vl-cloud、paddleocr-local等）
      */
     private String source;
+
+    /**
+     * 判断是否成功
+     */
+    public boolean isSuccess() {
+        return Boolean.TRUE.equals(this.success);
+    }
 }
