@@ -24,7 +24,7 @@ public interface NeuroimmunePatientMapper extends BaseMapper<Patient> {
             "p.has_follow_up, p.is_real_auth, p.doctor_id, p.disease_type, p.create_time, p.update_time, " +
             "p.is_deleted, d.name AS doctor_name " +
             "FROM patient p " +
-            "LEFT JOIN doctor d ON p.doctor_id = d.id " +
+            "LEFT JOIN doctor d ON p.doctor_id = d.id AND (d.is_deleted = 0 OR d.is_deleted IS NULL) " +
             "WHERE p.id = #{id}")
     Patient selectByIdWithDoctorName(@Param("id") Long id);
 
@@ -35,7 +35,7 @@ public interface NeuroimmunePatientMapper extends BaseMapper<Patient> {
             "p.has_follow_up, p.is_real_auth, p.doctor_id, p.disease_type, p.create_time, p.update_time, " +
             "p.is_deleted, d.name AS doctor_name " +
             "FROM patient p " +
-            "LEFT JOIN doctor d ON p.doctor_id = d.id " +
+            "LEFT JOIN doctor d ON p.doctor_id = d.id AND (d.is_deleted = 0 OR d.is_deleted IS NULL) " +
             "WHERE p.phone = #{phone}")
     Patient selectByPhoneWithDoctorName(@Param("phone") String phone);
 
@@ -46,7 +46,7 @@ public interface NeuroimmunePatientMapper extends BaseMapper<Patient> {
             "p.has_follow_up, p.is_real_auth, p.doctor_id, p.disease_type, p.create_time, p.update_time, " +
             "p.is_deleted, d.name AS doctor_name " +
             "FROM patient p " +
-            "LEFT JOIN doctor d ON p.doctor_id = d.id " +
+            "LEFT JOIN doctor d ON p.doctor_id = d.id AND (d.is_deleted = 0 OR d.is_deleted IS NULL) " +
             "WHERE (p.is_deleted = 0 OR p.is_deleted IS NULL) " +
             "ORDER BY p.update_time DESC")
     List<Patient> selectListWithDoctorName();
