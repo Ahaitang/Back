@@ -6,10 +6,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
@@ -18,50 +18,50 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  */
 @Configuration
 @EnableWebSecurity
-public class SecurityConfig extends WebSecurityConfigurerAdapter {
+public class SecurityConfig {
 
     @Autowired
     private JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    @Override
-    protected void configure(HttpSecurity http) throws Exception {
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             // 禁用 CSRF（JWT 不需要）
-            .csrf().disable()
+            .csrf(csrf -> csrf.disable())
             // 启用 CORS（由 CorsConfig 处理）
-            .cors()
-            .and()
+            .cors(cors -> {})
             // 无状态 Session（JWT 无状态）
-            .sessionManagement()
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            .and()
+            .sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             // 配置接口权限
-            .authorizeRequests()
+            .authorizeHttpRequests(auth -> auth
                 // 公开接口（无需认证）
-                .antMatchers(
-                    "/api/v1/**/login",           // 登录接口
-                    "/api/v1/**/register",        // 注册接口
-                    "/api/v1/super-admin/login",  // 超级管理员登录（仅登录公开）
-                    "/actuator/health",           // 健康检查（仅health端点）
-                    "/swagger-ui.html",           // Swagger UI 入口页面
-                    "/swagger-ui/**",             // Swagger UI 资源
-                    "/v3/api-docs/**",            // API 文档
-                    "/swagger-resources/**",      // Swagger 资源
-                    "/webjars/**"                 // Web 资源
+                .requestMatchers(
+                    "/api/v1/qmg/login",           // QMG 登录接口
+                    "/api/v1/qmg/register",        // QMG 注册接口
+                    "/api/v1/neuroimmune/login",   // Neuroimmune 登录接口
+                    "/api/v1/neuroimmune/register",// Neuroimmune 注册接口
+                    "/api/v1/neuroimmune/import/**/template", // 导入模板下载（公开）
+                    "/api/v1/super-admin/login",   // 超级管理员登录
+                    "/actuator/health",            // 健康检查
+                    "/actuator/info",              // 应用信息
+                    "/doc.html",                   // Knife4j 文档入口
+                    "/v3/api-docs/**",             // API 文档 JSON
+                    "/swagger-resources/**",       // Swagger 资源
+                    "/webjars/**"                  // Web 资源
                 ).permitAll()
-                // 导入模板下载需要认证（移除permitAll）
-                // 文件上传需要认证（移除permitAll）
                 // 其他接口需要认证
-                .anyRequest().authenticated()
-            .and()
+                .anyRequest().authenticated())
             // 禁用表单登录
-            .formLogin().disable()
+            .formLogin(form -> form.disable())
             // 禁用 HTTP Basic 认证
-            .httpBasic().disable()
+            .httpBasic(basic -> basic.disable())
             // 禁用登出
-            .logout().disable()
+            .logout(logout -> logout.disable())
             // 添加 JWT 过滤器
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
     }
 
     @Bean
