@@ -20,6 +20,19 @@ public interface PatientDoctorRelationMapper extends BaseMapper<PatientDoctorRel
     @Select("SELECT " + BASE_COLUMNS + " FROM patient_doctor_relation WHERE patient_id = #{patientId} AND status = 'active' ORDER BY bind_time DESC LIMIT 1")
     PatientDoctorRelation selectActiveByPatientId(Long patientId);
 
+    /**
+     * 批量查询患者当前生效的主治医生
+     */
+    @Select("<script>" +
+            "SELECT " + BASE_COLUMNS + " FROM patient_doctor_relation " +
+            "WHERE patient_id IN " +
+            "<foreach item='id' collection='patientIds' open='(' separator=',' close=')'>" +
+            "#{id}" +
+            "</foreach>" +
+            " AND status = 'active' AND relation_type = 'primary'" +
+            "</script>")
+    List<PatientDoctorRelation> selectBatchActiveByPatientIds(@Param("patientIds") List<Long> patientIds);
+
     @Select("SELECT " + BASE_COLUMNS + " FROM patient_doctor_relation WHERE doctor_id = #{doctorId} ORDER BY bind_time DESC")
     List<PatientDoctorRelation> selectByDoctorId(Long doctorId);
 

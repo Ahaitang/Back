@@ -6,6 +6,7 @@ import org.hospital.neuroimmune.entity.Doctor;
 import org.hospital.neuroimmune.entity.Patient;
 import org.hospital.neuroimmune.service.DoctorService;
 import org.hospital.neuroimmune.service.PatientService;
+import org.hospital.neuroimmune.service.PatientDoctorRelationService;
 import org.hospital.common.util.ExcelUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -30,6 +31,9 @@ public class ImportController {
 
     @Autowired
     private PatientService patientService;
+
+    @Autowired
+    private PatientDoctorRelationService relationService;
 
     /**
      * 下载医生导入模板
@@ -217,12 +221,14 @@ public class ImportController {
                     patient.setPhone(phone);
                     patient.setIdCard(idCard);
                     patient.setPassword(password);
-                    patient.setDoctorId(doctor.getId());
-                    patient.setDoctorName(doctor.getName());
                     patient.setHasFollowUp(false);
                     patient.setIsRealAuth(false);
 
                     patientService.save(patient);
+
+                    // 绑定医生
+                    relationService.bindDoctor(patient.getId(), doctor.getId(), "system", "批量导入");
+
                     result.success();
 
                 } catch (Exception e) {

@@ -13,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class PatientDoctorRelationServiceImpl implements PatientDoctorRelationService {
@@ -73,11 +75,6 @@ public class PatientDoctorRelationServiceImpl implements PatientDoctorRelationSe
 
         int result = relationMapper.insert(relation);
 
-        // 更新患者表中的医生信息（兼容旧数据）
-        patient.setDoctorId(doctorId);
-        patient.setDoctorName(doctor.getName());
-        patientMapper.updateById(patient);
-
         // 更新医生的患者数量
         updateDoctorPatientCount(doctorId);
 
@@ -93,14 +90,6 @@ public class PatientDoctorRelationServiceImpl implements PatientDoctorRelationSe
         }
 
         int result = relationMapper.unbind(id);
-
-        // 更新患者表中的医生信息
-        Patient patient = patientMapper.selectById(relation.getPatientId());
-        if (patient != null && relation.getDoctorId().equals(patient.getDoctorId())) {
-            patient.setDoctorId(null);
-            patient.setDoctorName(null);
-            patientMapper.updateById(patient);
-        }
 
         // 更新医生的患者数量
         updateDoctorPatientCount(relation.getDoctorId());
@@ -121,6 +110,21 @@ public class PatientDoctorRelationServiceImpl implements PatientDoctorRelationSe
     @Override
     public PatientDoctorRelation getActiveDoctor(Long patientId) {
         return relationMapper.selectActiveByPatientId(patientId);
+    }
+
+    @Override
+    public Map<Long, String> batchGetDoctorNames(List<Long> patientIds) {
+        if (patientIds == null || patientIds.isEmpty()) {
+            return Map.of();
+        }
+        // 查询所有患者当前生效的主治医生绑定
+        List<PatientDoctorRelation> relations = relationMapper.selectBatchActiveByPatientIds(patientIds);
+        return relations.stream()
+                .filter(r -> r.getDoctorName() != null)
+                .collect(Collectors.toMap(
+                        PatientDoctorRelation::getPatientId,
+                        PatientDoctorRelation::getDoctorName
+                ));
     }
 
     @Override

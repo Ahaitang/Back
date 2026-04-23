@@ -1,10 +1,12 @@
 package org.hospital.neuroimmune.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -17,22 +19,44 @@ public class Patient {
     private Long id;
     private String name;
     private String gender;
-    private Integer age;
+
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate birthDate;  // 出生日期
+
+    @TableField(exist = false)
+    private Integer age;  // 计算字段，不持久化
+
     private String phone;
     private String password;
     private String avatar;
     private String idCard;
     private Boolean hasFollowUp;
     private Boolean isRealAuth;
-    private Long doctorId;
-    private String doctorName;
 
-    // 疾病分类
-    private String diseaseType;  // MS, NMOSD, MG, MOGAD, 自身免疫性脑炎, GBS, CIDP, 其它疾病
+    @TableField(exist = false)
+    private String doctorName;  // 非持久化字段，通过 patient_doctor_relation 查询获取
+
+    private String diseaseType;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updateTime;
+
+    private Integer isDeleted;     // 0-有效, 1-无效
+
+    /**
+     * 根据出生日期计算年龄
+     */
+    public Integer getAge() {
+        if (birthDate == null) return null;
+        LocalDate today = LocalDate.now();
+        int calculatedAge = today.getYear() - birthDate.getYear();
+        if (today.getMonthValue() < birthDate.getMonthValue() ||
+            (today.getMonthValue() == birthDate.getMonthValue() && today.getDayOfMonth() < birthDate.getDayOfMonth())) {
+            calculatedAge--;
+        }
+        return calculatedAge;
+    }
 }

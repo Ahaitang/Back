@@ -2,6 +2,7 @@ package org.hospital.neuroimmune.service;
 
 import org.hospital.neuroimmune.entity.PatientDoctorRelation;
 import java.util.List;
+import java.util.Map;
 
 public interface PatientDoctorRelationService {
 
@@ -24,6 +25,13 @@ public interface PatientDoctorRelationService {
      * 获取患者当前绑定的医生
      */
     PatientDoctorRelation getActiveDoctor(Long patientId);
+
+    /**
+     * 批量获取患者的主治医生姓名
+     * @param patientIds 患者ID列表
+     * @return Map<patientId, doctorName>
+     */
+    Map<Long, String> batchGetDoctorNames(List<Long> patientIds);
 
     /**
      * 获取医生的所有患者

@@ -7,10 +7,10 @@ import org.hospital.common.model.LoginRequest;
 import org.hospital.common.model.PageRequest;
 import org.hospital.common.model.PageResult;
 import org.hospital.neuroimmune.entity.Patient;
-import org.hospital.neuroimmune.entity.Doctor;
-import org.hospital.neuroimmune.mapper.NeuroimmuneDoctorMapper;
+import org.hospital.neuroimmune.entity.PatientDoctorRelation;
 import org.hospital.neuroimmune.mapper.NeuroimmunePatientMapper;
 import org.hospital.neuroimmune.service.PatientService;
+import org.hospital.neuroimmune.service.PatientDoctorRelationService;
 import org.hospital.common.util.PasswordUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
@@ -19,7 +19,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service("neuroimmunePatientService")
@@ -29,7 +28,7 @@ public class PatientServiceImpl implements PatientService {
     private NeuroimmunePatientMapper patientMapper;
 
     @Autowired
-    private NeuroimmuneDoctorMapper doctorMapper;
+    private PatientDoctorRelationService relationService;
 
     @Override
     public PageResult<Patient> getList(PageRequest request) {
@@ -41,7 +40,7 @@ public class PatientServiceImpl implements PatientService {
         Page<Patient> result = patientMapper.selectPage(page, wrapper);
         List<Patient> patients = result.getRecords();
 
-        // Populate doctorName for each patient
+        // Populate doctorName from relation table
         populateDoctorNames(patients);
 
         return new PageResult<>(patients, result.getTotal(), request.getPageNum(), request.getPageSize());
@@ -49,42 +48,53 @@ public class PatientServiceImpl implements PatientService {
 
     @Override
     public PageResult<Patient> getListByDoctorId(Long doctorId, PageRequest request) {
-        Page<Patient> page = new Page<>(request.getPageNum(), request.getPageSize());
+        // Get active patient relations for this doctor
+        List<PatientDoctorRelation> relations = relationService.getActivePatientsByDoctor(doctorId);
+        if (relations.isEmpty()) {
+            return new PageResult<>(List.of(), 0L, request.getPageNum(), request.getPageSize());
+        }
 
-        LambdaQueryWrapper<Patient> wrapper = buildQueryWrapper(request);
-        wrapper.eq(Patient::getDoctorId, doctorId);
+        List<Long> patientIds = relations.stream()
+                .map(PatientDoctorRelation::getPatientId)
+                .collect(Collectors.toList());
+
+        // Query patients by IDs
+        LambdaQueryWrapper<Patient> wrapper = new LambdaQueryWrapper<>();
+        wrapper.in(Patient::getId, patientIds);
+        wrapper.eq(Patient::getIsDeleted, 0).or().isNull(Patient::getIsDeleted);
         wrapper.orderByDesc(Patient::getUpdateTime);
 
+        Page<Patient> page = new Page<>(request.getPageNum(), request.getPageSize());
         Page<Patient> result = patientMapper.selectPage(page, wrapper);
         List<Patient> patients = result.getRecords();
 
-        // Populate doctorName for each patient
-        populateDoctorNames(patients);
+        // Set doctorName from relation
+        patients.forEach(p -> {
+            PatientDoctorRelation relation = relations.stream()
+                    .filter(r -> r.getPatientId().equals(p.getId()))
+                    .findFirst().orElse(null);
+            if (relation != null) {
+                p.setDoctorName(relation.getDoctorName());
+            }
+        });
 
         return new PageResult<>(patients, result.getTotal(), request.getPageNum(), request.getPageSize());
     }
 
     /**
-     * Populate doctorName for patients by fetching doctor info
+     * Populate doctorName for patients from relation table
      */
     private void populateDoctorNames(List<Patient> patients) {
         if (patients == null || patients.isEmpty()) return;
 
-        Set<Long> doctorIds = patients.stream()
-                .filter(p -> p.getDoctorId() != null)
-                .map(Patient::getDoctorId)
-                .collect(Collectors.toSet());
+        List<Long> patientIds = patients.stream()
+                .map(Patient::getId)
+                .collect(Collectors.toList());
 
-        if (doctorIds.isEmpty()) return;
-
-        List<Doctor> doctors = doctorMapper.selectBatchIds(doctorIds);
-        Map<Long, String> doctorNameMap = doctors.stream()
-                .collect(Collectors.toMap(Doctor::getId, Doctor::getName));
+        Map<Long, String> doctorNameMap = relationService.batchGetDoctorNames(patientIds);
 
         patients.forEach(p -> {
-            if (p.getDoctorId() != null) {
-                p.setDoctorName(doctorNameMap.get(p.getDoctorId()));
-            }
+            p.setDoctorName(doctorNameMap.get(p.getId()));
         });
     }
 
@@ -108,9 +118,7 @@ public class PatientServiceImpl implements PatientService {
         if (request.getIsRealAuth() != null) {
             wrapper.eq(Patient::getIsRealAuth, request.getIsRealAuth());
         }
-        if (request.getDoctorId() != null) {
-            wrapper.eq(Patient::getDoctorId, request.getDoctorId());
-        }
+        // doctorId filter is handled separately in getListByDoctorId
         if (request.getType() != null && !request.getType().isEmpty()) {
             wrapper.eq(Patient::getDiseaseType, request.getType());
         }
@@ -121,7 +129,14 @@ public class PatientServiceImpl implements PatientService {
     @Override
     @Cacheable(value = "neuro-patient", key = "#id", unless = "#result == null")
     public Patient getById(Long id) {
-        return patientMapper.selectByIdWithDoctorName(id);
+        Patient patient = patientMapper.selectById(id);
+        if (patient != null) {
+            PatientDoctorRelation relation = relationService.getActiveDoctor(id);
+            if (relation != null) {
+                patient.setDoctorName(relation.getDoctorName());
+            }
+        }
+        return patient;
     }
 
     @Override
@@ -167,9 +182,8 @@ public class PatientServiceImpl implements PatientService {
     }
 
     @Override
-    @Cacheable(value = "neuro-stats", key = "'patient:count:doctor:' + #doctorId")
     public Long countByDoctorId(Long doctorId) {
-        return patientMapper.selectCountByDoctorId(doctorId);
+        return relationService.countPatientsByDoctor(doctorId);
     }
 
     @Override
@@ -189,7 +203,7 @@ public class PatientServiceImpl implements PatientService {
 
     @Override
     public PageResult<Patient> getByIdAsPageResult(Long id) {
-        Patient patient = patientMapper.selectById(id);
+        Patient patient = getById(id);
         if (patient != null) {
             return new PageResult<>(java.util.Collections.singletonList(patient), 1L, 1, 10);
         }
