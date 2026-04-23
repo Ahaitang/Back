@@ -121,7 +121,7 @@ public class PatientServiceImpl implements PatientService {
     @Override
     @Cacheable(value = "neuro-patient", key = "#id", unless = "#result == null")
     public Patient getById(Long id) {
-        return patientMapper.selectById(id);
+        return patientMapper.selectByIdWithDoctorName(id);
     }
 
     @Override
