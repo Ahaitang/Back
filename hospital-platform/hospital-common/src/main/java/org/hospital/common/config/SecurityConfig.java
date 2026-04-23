@@ -41,7 +41,7 @@ public class SecurityConfig {
                     "/api/v1/qmg/register",        // QMG 注册接口
                     "/api/v1/neuroimmune/login",   // Neuroimmune 登录接口
                     "/api/v1/neuroimmune/register",// Neuroimmune 注册接口
-                    "/api/v1/neuroimmune/import/**/template", // 导入模板下载（公开）
+                    "/api/v1/neuroimmune/import/*/template", // 导入模板下载（公开）
                     "/api/v1/super-admin/login",   // 超级管理员登录
                     "/actuator/health",            // 健康检查
                     "/actuator/info",              // 应用信息
