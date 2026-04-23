@@ -6,6 +6,8 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.hospital.neuroimmune.entity.Patient;
 
+import java.util.List;
+
 @Mapper
 public interface NeuroimmunePatientMapper extends BaseMapper<Patient> {
 
