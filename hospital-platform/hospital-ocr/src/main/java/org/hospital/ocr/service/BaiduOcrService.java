@@ -14,6 +14,7 @@ import jakarta.annotation.PostConstruct;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.util.*;
 
 /**
@@ -100,7 +101,7 @@ public class BaiduOcrService {
     public OcrResult accurateBasic(MultipartFile file) throws IOException {
         // 先尝试 PaddleOCR-VL（更适合病历等复杂文档）
         log.info("尝试使用 PaddleOCR-VL 识别病历");
-        OcrResult result = paddleOcrVl(file, "识别病历图片内容，提取诊断、症状、用药、检查结果等关键医疗信息，保持原文格式");
+        OcrResult result = paddleOcrVl(file);
 
         if (result != null && result.isSuccess() && result.getFullText() != null && !result.getFullText().isEmpty()) {
             log.info("PaddleOCR-VL 识别成功");
@@ -128,7 +129,7 @@ public class BaiduOcrService {
     /**
      * 使用PaddleOCR-VL进行文档解析（免费API - 异步任务模式）
      */
-    public OcrResult paddleOcrVl(MultipartFile file, String prompt) {
+    public OcrResult paddleOcrVl(MultipartFile file) {
         try {
             String token = getAccessToken();
             if (token == null) {
@@ -139,7 +140,7 @@ public class BaiduOcrService {
             }
 
             // Step 1: 提交任务
-            String taskId = submitVlParserTask(token, file, prompt);
+            String taskId = submitVlParserTask(token, file);
             if (taskId == null) {
                 OcrResult ocrResult = new OcrResult();
                 ocrResult.setSuccess(false);
@@ -149,15 +150,17 @@ public class BaiduOcrService {
 
             log.info("PaddleOCR-VL任务提交成功，taskId: {}", taskId);
 
-            // Step 2: 轮询查询结果（最多等待30秒）
-            int maxRetries = 15;
-            int retryInterval = 2000;
+            // Step 2: 轮询查询结果（最多等待60秒，建议5-10秒后开始轮询）
+            Thread.sleep(5000); // 先等待5秒
+            int maxRetries = 12;
+            int retryInterval = 5000;
             for (int i = 0; i < maxRetries; i++) {
-                Thread.sleep(retryInterval);
-                OcrResult result = queryVlParserTask(token, taskId);
-                if (result != null) {
-                    return result;
+                OcrResult queryResult = queryVlParserTask(token, taskId);
+                if (queryResult != null) {
+                    // 返回结果（成功或失败）
+                    return queryResult;
                 }
+                Thread.sleep(retryInterval);
             }
 
             // 超时
@@ -177,32 +180,43 @@ public class BaiduOcrService {
 
     /**
      * 提交PaddleOCR-VL文档解析任务
+     * 使用 application/x-www-form-urlencoded 格式
      */
-    private String submitVlParserTask(String token, MultipartFile file, String prompt) throws Exception {
+    private String submitVlParserTask(String token, MultipartFile file) throws Exception {
         String apiUrl = VL_PARSER_TASK_URL + "?access_token=" + token;
 
         byte[] imageData = file.getBytes();
         String imageBase64 = Base64.getEncoder().encodeToString(imageData);
-
-        JSONObject requestBody = new JSONObject();
-        requestBody.put("image", imageBase64);
-        if (prompt != null && !prompt.isEmpty()) {
-            requestBody.put("prompt", prompt);
+        String fileName = file.getOriginalFilename();
+        if (fileName == null || fileName.isEmpty()) {
+            fileName = "image.jpg";
         }
+
+        // 构建 form-urlencoded 格式的请求体
+        // 必选参数: file_data, file_name
+        String formBody = "file_data=" + URLEncoder.encode(imageBase64, "UTF-8") +
+                         "&file_name=" + URLEncoder.encode(fileName, "UTF-8");
 
         URL url = new URL(apiUrl);
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestMethod("POST");
-        connection.setRequestProperty("Content-Type", "application/json");
+        connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
         connection.setDoOutput(true);
         connection.setConnectTimeout(config.getConnectTimeout());
         connection.setReadTimeout(config.getReadTimeout());
 
         OutputStream os = connection.getOutputStream();
-        os.write(requestBody.toString().getBytes("UTF-8"));
+        os.write(formBody.getBytes("UTF-8"));
         os.close();
 
-        InputStream is = connection.getInputStream();
+        int responseCode = connection.getResponseCode();
+        InputStream is;
+        if (responseCode >= 400) {
+            is = connection.getErrorStream();
+        } else {
+            is = connection.getInputStream();
+        }
+
         BufferedReader reader = new BufferedReader(new InputStreamReader(is));
         StringBuilder result = new StringBuilder();
         String line;
@@ -211,34 +225,42 @@ public class BaiduOcrService {
         }
         reader.close();
 
+        log.debug("提交任务响应: {}", result.toString());
+
         JSONObject jsonResult = new JSONObject(result.toString());
-        if (jsonResult.has("error_code")) {
-            log.error("提交任务失败: {}", jsonResult.optString("error_msg"));
+        int errorCode = jsonResult.optInt("error_code", -1);
+        if (errorCode != 0) {
+            log.error("提交任务失败, error_code: {}, error_msg: {}", errorCode, jsonResult.optString("error_msg"));
             return null;
         }
 
-        return jsonResult.optString("task_id");
+        JSONObject resultObj = jsonResult.optJSONObject("result");
+        if (resultObj != null) {
+            return resultObj.optString("task_id");
+        }
+        return null;
     }
 
     /**
      * 查询PaddleOCR-VL文档解析任务结果
+     * 使用 application/x-www-form-urlencoded 格式
      */
     private OcrResult queryVlParserTask(String token, String taskId) throws Exception {
         String apiUrl = VL_PARSER_QUERY_URL + "?access_token=" + token;
 
-        JSONObject requestBody = new JSONObject();
-        requestBody.put("task_id", taskId);
+        // 构建 form-urlencoded 格式的请求体
+        String formBody = "task_id=" + URLEncoder.encode(taskId, "UTF-8");
 
         URL url = new URL(apiUrl);
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestMethod("POST");
-        connection.setRequestProperty("Content-Type", "application/json");
+        connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
         connection.setDoOutput(true);
         connection.setConnectTimeout(config.getConnectTimeout());
         connection.setReadTimeout(config.getReadTimeout());
 
         OutputStream os = connection.getOutputStream();
-        os.write(requestBody.toString().getBytes("UTF-8"));
+        os.write(formBody.getBytes("UTF-8"));
         os.close();
 
         InputStream is = connection.getInputStream();
@@ -252,36 +274,91 @@ public class BaiduOcrService {
 
         JSONObject jsonResult = new JSONObject(result.toString());
 
-        if (jsonResult.has("error_code")) {
-            log.warn("查询任务失败: {}", jsonResult.optString("error_msg"));
+        int errorCode = jsonResult.optInt("error_code", -1);
+        if (errorCode != 0) {
+            log.warn("查询任务失败, error_code: {}, error_msg: {}", errorCode, jsonResult.optString("error_msg"));
             return null;
         }
 
-        int retCode = jsonResult.optInt("ret_code", -1);
-        if (retCode == 0) {
-            OcrResult ocrResult = new OcrResult();
-            ocrResult.setSuccess(true);
+        JSONObject resultObj = jsonResult.optJSONObject("result");
+        if (resultObj == null) {
+            return null;
+        }
 
-            JSONObject resultData = jsonResult.optJSONObject("result");
-            if (resultData != null) {
-                String text = resultData.optString("text", "");
-                ocrResult.setFullText(text);
-                if (!text.isEmpty()) {
-                    ocrResult.setWords(Arrays.asList(text.split("\n")));
+        String status = resultObj.optString("status", "");
+        log.debug("任务状态: {}", status);
+
+        switch (status) {
+            case "success":
+                // 任务成功 - 获取 markdown_url 并下载内容
+                String markdownUrl = resultObj.optString("markdown_url");
+                if (markdownUrl != null && !markdownUrl.isEmpty()) {
+                    String markdownContent = downloadMarkdown(markdownUrl);
+                    OcrResult ocrResult = new OcrResult();
+                    ocrResult.setSuccess(true);
+                    ocrResult.setFullText(markdownContent);
+                    if (markdownContent != null && !markdownContent.isEmpty()) {
+                        ocrResult.setWords(Arrays.asList(markdownContent.split("\n")));
+                    }
+                    ocrResult.setSource("paddleocr-vl-cloud");
+                    return ocrResult;
                 }
+                // 如果没有 markdown_url，返回失败
+                OcrResult noResult = new OcrResult();
+                noResult.setSuccess(false);
+                noResult.setErrorMsg("解析结果为空");
+                return noResult;
+
+            case "failed":
+                // 任务失败
+                String taskError = resultObj.optString("task_error", "任务处理失败");
+                OcrResult failedResult = new OcrResult();
+                failedResult.setSuccess(false);
+                failedResult.setErrorMsg(taskError);
+                return failedResult;
+
+            case "pending":
+            case "processing":
+            case "running":
+                // 任务进行中，继续等待
+                log.info("任务进行中，taskId: {}, status: {}", taskId, status);
+                return null;
+
+            default:
+                log.warn("未知状态: {}", status);
+                return null;
+        }
+    }
+
+    /**
+     * 下载 markdown 结果文件
+     */
+    private String downloadMarkdown(String url) {
+        try {
+            URL downloadUrl = new URL(url);
+            HttpURLConnection connection = (HttpURLConnection) downloadUrl.openConnection();
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout(30000);
+            connection.setReadTimeout(60000);
+
+            if (connection.getResponseCode() != 200) {
+                log.error("下载 markdown 失败，响应码: {}", connection.getResponseCode());
+                return null;
             }
 
-            ocrResult.setSource("paddleocr-vl-cloud");
-            return ocrResult;
-        } else if (retCode == 1) {
-            log.info("任务进行中，taskId: {}", taskId);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), "UTF-8"));
+            StringBuilder content = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                content.append(line).append("\n");
+            }
+            reader.close();
+            connection.disconnect();
+
+            return content.toString();
+        } catch (Exception e) {
+            log.error("下载 markdown 内容失败", e);
             return null;
-        } else {
-            log.error("任务失败，ret_code: {}, ret_msg: {}", retCode, jsonResult.optString("ret_msg"));
-            OcrResult ocrResult = new OcrResult();
-            ocrResult.setSuccess(false);
-            ocrResult.setErrorMsg(jsonResult.optString("ret_msg", "任务处理失败"));
-            return ocrResult;
         }
     }
 
@@ -292,9 +369,12 @@ public class BaiduOcrService {
         OcrResult ocrResult = new OcrResult();
 
         if (result.has("error_code")) {
-            ocrResult.setSuccess(false);
-            ocrResult.setErrorMsg(result.optString("error_msg", "识别失败"));
-            return ocrResult;
+            int errorCode = result.optInt("error_code");
+            if (errorCode != 0) {
+                ocrResult.setSuccess(false);
+                ocrResult.setErrorMsg(result.optString("error_msg", "识别失败"));
+                return ocrResult;
+            }
         }
 
         ocrResult.setSuccess(true);
