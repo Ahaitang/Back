@@ -56,12 +56,12 @@ public class ScheduleServiceImpl implements ScheduleService {
             item.setId(med.getId());
             item.setTime(med.getFrequency()); // 用药频率作为时间
             item.setWho("doctor".equals(role) ? med.getPatientName() : med.getDoctorName());
-            item.setDate(formatDate(med.getDate()));
+            item.setDate(formatDateFromLocalDate(med.getDate()));
             // 设置结束日期
             if (med.getEndDate() != null) {
-                item.setEndDate(formatDate(med.getEndDate()));
+                item.setEndDate(formatDateFromLocalDate(med.getEndDate()));
             } else if (med.getDuration() != null && med.getDate() != null) {
-                LocalDate startDate = med.getDate().toLocalDate();
+                LocalDate startDate = med.getDate();
                 LocalDate endDate = calculateEndDate(startDate, med.getDuration());
                 item.setEndDate(endDate.format(DATE_FORMATTER));
             }
@@ -119,12 +119,12 @@ public class ScheduleServiceImpl implements ScheduleService {
                 .filter(med -> {
                     // 检查开始日期
                     if (med.getDate() == null) return false;
-                    LocalDate startDate = med.getDate().toLocalDate();
+                    LocalDate startDate = med.getDate();
 
                     // 检查结束日期（如果有 duration 但没有 endDate，计算 endDate）
                     LocalDate endDate;
                     if (med.getEndDate() != null) {
-                        endDate = med.getEndDate().toLocalDate();
+                        endDate = med.getEndDate();
                     } else if (med.getDuration() != null) {
                         endDate = calculateEndDate(startDate, med.getDuration());
                     } else {

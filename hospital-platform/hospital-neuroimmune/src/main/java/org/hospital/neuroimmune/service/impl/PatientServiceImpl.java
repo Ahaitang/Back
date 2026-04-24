@@ -12,6 +12,7 @@ import org.hospital.neuroimmune.mapper.NeuroimmunePatientMapper;
 import org.hospital.neuroimmune.service.PatientService;
 import org.hospital.neuroimmune.service.PatientDoctorRelationService;
 import org.hospital.neuroimmune.service.DiseaseEpisodeService;
+import org.hospital.neuroimmune.service.PatientDiseaseService;
 import org.hospital.neuroimmune.service.FollowUpService;
 import org.hospital.common.util.PasswordUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +39,9 @@ public class PatientServiceImpl implements PatientService {
 
     @Autowired
     private FollowUpService followUpService;
+
+    @Autowired
+    private PatientDiseaseService patientDiseaseService;
 
     @Override
     public PageResult<Patient> getList(PageRequest request) {
@@ -133,8 +137,15 @@ public class PatientServiceImpl implements PatientService {
             wrapper.eq(Patient::getIsRealAuth, request.getIsRealAuth());
         }
         // doctorId filter is handled separately in getListByDoctorId
+        // Disease type filter - now uses patient_disease table
         if (request.getType() != null && !request.getType().isEmpty()) {
-            wrapper.eq(Patient::getDiseaseType, request.getType());
+            List<Long> patientIdsWithType = patientDiseaseService.getPatientIdsByDiseaseCode(request.getType());
+            if (!patientIdsWithType.isEmpty()) {
+                wrapper.in(Patient::getId, patientIdsWithType);
+            } else {
+                // No patients with this disease type, return empty result
+                wrapper.apply("1 = 0");
+            }
         }
 
         return wrapper;

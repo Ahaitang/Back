@@ -143,7 +143,7 @@ public class PatientDoctorRelationController {
                 item.put("phone", patient.getPhone());
                 item.put("hasFollowUp", patient.getHasFollowUp());
                 item.put("isRealAuth", patient.getIsRealAuth());
-                item.put("diseaseType", patient.getDiseaseType());
+                item.put("diseaseType", patient.getDiseaseTypes());
             }
 
             return item;
