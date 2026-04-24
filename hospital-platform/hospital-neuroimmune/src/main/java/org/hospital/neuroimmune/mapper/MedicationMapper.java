@@ -10,7 +10,7 @@ import java.util.List;
 @Mapper
 public interface MedicationMapper extends BaseMapper<Medication> {
 
-    @Select("SELECT COUNT(*) FROM medication WHERE doctor_id = #{doctorId}")
+    @Select("SELECT CAST(COUNT(*) AS UNSIGNED) FROM medication WHERE doctor_id = #{doctorId}")
     Long selectCountByDoctorId(@Param("doctorId") Long doctorId);
 
     @Select("SELECT id, patient_id, patient_name, doctor_id, doctor_name, medication_name, date, dosage, unit, frequency, route, duration, end_date, notes, create_time FROM medication ORDER BY date DESC")

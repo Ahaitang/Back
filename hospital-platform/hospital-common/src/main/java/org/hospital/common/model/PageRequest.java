@@ -1,8 +1,8 @@
 package org.hospital.common.model;
 
 import lombok.Data;
-import javax.validation.constraints.Min;
-import javax.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 
 /**
  * 分页请求参数

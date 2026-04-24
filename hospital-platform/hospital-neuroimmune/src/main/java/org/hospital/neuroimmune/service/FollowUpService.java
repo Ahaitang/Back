@@ -10,8 +10,8 @@ public interface FollowUpService {
     PageResult<FollowUp> getListByDoctorId(Long doctorId, PageRequest request);
     FollowUp getById(Long id);
     void save(FollowUp followUp);
-    void updateStatus(Long id, String status);
-    void delete(Long id);
+    void updateStatus(Long id, Integer status);
+    void cancel(Long id);
     Long getPendingCount();
     Long getPendingCountByDoctorId(Long doctorId);
     Long getPendingCountByPatientId(Long patientId);

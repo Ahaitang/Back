@@ -8,17 +8,17 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * OpenAPI/Swagger 配置
+ * Knife4j API 文档配置 (Spring Boot 3.x)
  */
 @Configuration
-public class OpenApiConfig {
+public class Knife4jConfig {
 
     @Bean
     public OpenAPI hospitalPlatformOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
                         .title("Hospital Platform API")
-                        .description("医院平台统一 API 文档，包含 QMG（重症肌无力评分系统）和 Neuroimmune（神经免疫疾病随访系统）")
+                        .description("医院平台统一 API 文档<br/>包含 QMG（重症肌无力评分系统）和 Neuroimmune（神经免疫疾病随访系统）")
                         .version("1.0.0")
                         .contact(new Contact()
                                 .name("Hospital Platform Team")

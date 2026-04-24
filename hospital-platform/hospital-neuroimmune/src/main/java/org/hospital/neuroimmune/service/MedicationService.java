@@ -13,7 +13,8 @@ public interface MedicationService {
     List<Medication> getByDoctorId(Long doctorId);
     List<Medication> getAllMedications();
     void save(Medication medication);
-    void delete(Long id);
+    void updateStatus(Long id, Integer status);
+    void cancel(Long id);
     Long countByDoctorId(Long doctorId);
     Long countByPatientId(Long patientId);
 }

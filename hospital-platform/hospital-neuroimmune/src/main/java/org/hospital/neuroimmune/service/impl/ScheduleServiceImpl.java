@@ -40,11 +40,11 @@ public class ScheduleServiceImpl implements ScheduleService {
         for (FollowUp fu : followUps) {
             ScheduleDTO.ScheduleItem item = new ScheduleDTO.ScheduleItem();
             item.setId(fu.getId());
-            item.setTime(formatTimeRange(fu.getDate()));
+            item.setTime(formatTimeFromLocalDate(fu.getDate()));
             item.setWho("doctor".equals(role) ? fu.getPatientName() : fu.getDoctorName());
-            item.setDate(formatDate(fu.getDate()));
+            item.setDate(formatDateFromLocalDate(fu.getDate()));
             item.setType(fu.getType());
-            item.setStatus(fu.getStatus());
+            item.setStatus(fu.getStatus() != null ? String.valueOf(fu.getStatus()) : "0");
             item.setContent(fu.getProject());
             schedule.getFollow().add(item);
         }
@@ -66,7 +66,7 @@ public class ScheduleServiceImpl implements ScheduleService {
                 item.setEndDate(endDate.format(DATE_FORMATTER));
             }
             item.setType("medication");
-            item.setContent(med.getMedicationName() + " " + med.getDosage() + (med.getUnit() != null ? med.getUnit() : ""));
+            item.setContent(med.getMedicationName() + " " + (med.getDosageValue() != null ? med.getDosageValue() : "") + (med.getDosageUnit() != null ? med.getDosageUnit() : ""));
             schedule.getMedication().add(item);
         }
 
@@ -86,9 +86,10 @@ public class ScheduleServiceImpl implements ScheduleService {
     }
 
     private List<FollowUp> getFollowUpsByDate(String date, String role, Long userId) {
+        LocalDate queryDate = LocalDate.parse(date, DATE_FORMATTER);
+
         LambdaQueryWrapper<FollowUp> wrapper = new LambdaQueryWrapper<>();
-        wrapper.ge(FollowUp::getDate, date + " 00:00:00")
-               .le(FollowUp::getDate, date + " 23:59:59");
+        wrapper.eq(FollowUp::getDate, queryDate);
 
         if ("doctor".equals(role) && userId != null) {
             wrapper.eq(FollowUp::getDoctorId, userId);
@@ -179,5 +180,15 @@ public class ScheduleServiceImpl implements ScheduleService {
     private String formatDate(LocalDateTime dateTime) {
         if (dateTime == null) return "";
         return dateTime.format(DATE_FORMATTER);
+    }
+
+    private String formatTimeFromLocalDate(LocalDate date) {
+        if (date == null) return "";
+        return "00:00";  // LocalDate doesn't have time component
+    }
+
+    private String formatDateFromLocalDate(LocalDate date) {
+        if (date == null) return "";
+        return date.format(DATE_FORMATTER);
     }
 }

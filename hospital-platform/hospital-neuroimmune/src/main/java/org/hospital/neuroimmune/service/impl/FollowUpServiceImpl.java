@@ -13,9 +13,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class FollowUpServiceImpl implements FollowUpService {
@@ -23,13 +21,10 @@ public class FollowUpServiceImpl implements FollowUpService {
     @Autowired
     private FollowUpMapper followUpMapper;
 
-    private static final Map<String, String> STATUS_TEXT_MAP = new HashMap<>();
-
-    static {
-        STATUS_TEXT_MAP.put("pending", "待随访");
-        STATUS_TEXT_MAP.put("completed", "已完成");
-        STATUS_TEXT_MAP.put("cancelled", "已取消");
-    }
+    // 状态常量: 0-进行中, 1-完成, 2-取消
+    public static final int STATUS_ONGOING = 0;
+    public static final int STATUS_COMPLETED = 1;
+    public static final int STATUS_CANCELLED = 2;
 
     @Override
     public PageResult<FollowUp> getList(PageRequest request) {
@@ -57,6 +52,14 @@ public class FollowUpServiceImpl implements FollowUpService {
     private LambdaQueryWrapper<FollowUp> buildQueryWrapper(PageRequest request) {
         LambdaQueryWrapper<FollowUp> wrapper = new LambdaQueryWrapper<>();
 
+        // 默认不显示已取消的记录，除非明确筛选
+        if (request.getStatus() != null && !request.getStatus().isEmpty()) {
+            wrapper.eq(FollowUp::getStatus, Integer.parseInt(request.getStatus()));
+        } else {
+            // 默认只显示进行中和已完成的记录
+            wrapper.ne(FollowUp::getStatus, STATUS_CANCELLED);
+        }
+
         if (request.getPatientId() != null) {
             wrapper.eq(FollowUp::getPatientId, request.getPatientId());
         }
@@ -67,9 +70,6 @@ public class FollowUpServiceImpl implements FollowUpService {
             wrapper.and(w -> w.like(FollowUp::getPatientName, request.getKeyword())
                     .or().like(FollowUp::getDoctorName, request.getKeyword())
                     .or().like(FollowUp::getProject, request.getKeyword()));
-        }
-        if (request.getStatus() != null && !request.getStatus().isEmpty()) {
-            wrapper.eq(FollowUp::getStatus, request.getStatus());
         }
         if (request.getType() != null && !request.getType().isEmpty()) {
             wrapper.eq(FollowUp::getType, request.getType());
@@ -93,9 +93,8 @@ public class FollowUpServiceImpl implements FollowUpService {
     @CacheEvict(value = {"neuro-followup", "neuro-stats"}, allEntries = true)
     public void save(FollowUp followUp) {
         if (followUp.getStatus() == null) {
-            followUp.setStatus("pending");
+            followUp.setStatus(STATUS_ONGOING);
         }
-        followUp.setStatusText(STATUS_TEXT_MAP.getOrDefault(followUp.getStatus(), followUp.getStatus()));
         if (followUp.getId() == null) {
             followUpMapper.insert(followUp);
         } else {
@@ -105,49 +104,61 @@ public class FollowUpServiceImpl implements FollowUpService {
 
     @Override
     @CacheEvict(value = {"neuro-followup", "neuro-stats"}, allEntries = true)
-    public void delete(Long id) {
-        followUpMapper.deleteById(id);
+    public void updateStatus(Long id, Integer status) {
+        FollowUp followUp = new FollowUp();
+        followUp.setId(id);
+        followUp.setStatus(status);
+        followUpMapper.updateById(followUp);
+    }
+
+    @Override
+    @CacheEvict(value = {"neuro-followup", "neuro-stats"}, allEntries = true)
+    public void cancel(Long id) {
+        updateStatus(id, STATUS_CANCELLED);
     }
 
     @Override
     @Cacheable(value = "neuro-stats", key = "'followup:pending'")
     public Long getPendingCount() {
-        return followUpMapper.selectPendingCount();
+        LambdaQueryWrapper<FollowUp> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(FollowUp::getStatus, STATUS_ONGOING);
+        Long count = followUpMapper.selectCount(wrapper);
+        return count != null ? count : 0L;
     }
 
     @Override
     @Cacheable(value = "neuro-stats", key = "'followup:pending:doctor:' + #doctorId")
     public Long getPendingCountByDoctorId(Long doctorId) {
-        return followUpMapper.selectPendingCountByDoctorId(doctorId);
+        LambdaQueryWrapper<FollowUp> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(FollowUp::getDoctorId, doctorId)
+               .eq(FollowUp::getStatus, STATUS_ONGOING);
+        Long count = followUpMapper.selectCount(wrapper);
+        return count != null ? count : 0L;
     }
 
     @Override
     public List<FollowUp> getPendingByDoctorId(Long doctorId) {
-        return followUpMapper.selectPendingByDoctorId(doctorId);
+        LambdaQueryWrapper<FollowUp> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(FollowUp::getDoctorId, doctorId)
+               .eq(FollowUp::getStatus, STATUS_ONGOING)
+               .orderByAsc(FollowUp::getDate);
+        return followUpMapper.selectList(wrapper);
     }
 
     @Override
     public Long getPendingCountByPatientId(Long patientId) {
         LambdaQueryWrapper<FollowUp> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(FollowUp::getPatientId, patientId)
-               .eq(FollowUp::getStatus, "pending");
-        return followUpMapper.selectCount(wrapper);
-    }
-
-    @Override
-    @CacheEvict(value = {"neuro-followup", "neuro-stats"}, allEntries = true)
-    public void updateStatus(Long id, String status) {
-        FollowUp followUp = new FollowUp();
-        followUp.setId(id);
-        followUp.setStatus(status);
-        followUp.setStatusText(STATUS_TEXT_MAP.getOrDefault(status, status));
-        followUpMapper.updateById(followUp);
+               .eq(FollowUp::getStatus, STATUS_ONGOING);
+        Long count = followUpMapper.selectCount(wrapper);
+        return count != null ? count : 0L;
     }
 
     @Override
     public Long countByPatientId(Long patientId) {
         LambdaQueryWrapper<FollowUp> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(FollowUp::getPatientId, patientId);
-        return followUpMapper.selectCount(wrapper);
+        Long count = followUpMapper.selectCount(wrapper);
+        return count != null ? count : 0L;
     }
 }

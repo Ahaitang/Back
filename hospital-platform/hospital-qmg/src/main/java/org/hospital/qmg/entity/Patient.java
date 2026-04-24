@@ -22,4 +22,6 @@ public class Patient {
     private LocalDateTime createTime;
     /** 更新时间 */
     private LocalDateTime updateTime;
+    /** 是否删除：0-有效，1-无效 */
+    private Integer isDeleted;
 }

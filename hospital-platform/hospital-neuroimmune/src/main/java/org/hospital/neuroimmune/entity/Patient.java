@@ -34,6 +34,9 @@ public class Patient {
     private Boolean isRealAuth;
 
     @TableField(exist = false)
+    private Long doctorId;  // 非持久化字段，通过 patient_doctor_relation 查询获取
+
+    @TableField(exist = false)
     private String doctorName;  // 非持久化字段，通过 patient_doctor_relation 查询获取
 
     private String diseaseType;

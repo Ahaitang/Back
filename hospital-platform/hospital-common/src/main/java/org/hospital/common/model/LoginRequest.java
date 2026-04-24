@@ -1,8 +1,8 @@
 package org.hospital.common.model;
 
 import lombok.Data;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.Size;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 /**
  * 登录请求
@@ -18,6 +18,5 @@ public class LoginRequest {
     @Size(min = 6, max = 100, message = "密码长度必须在6-100个字符之间")
     private String password;
 
-    @NotBlank(message = "角色不能为空")
-    private String role;  // admin, doctor, patient, manager
+    private String role;  // admin, doctor, patient, manager（可选，后端自动判断）
 }

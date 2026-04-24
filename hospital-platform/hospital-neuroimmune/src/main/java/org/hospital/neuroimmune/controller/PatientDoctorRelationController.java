@@ -32,11 +32,11 @@ public class PatientDoctorRelationController {
      * 患者绑定医生
      */
     @PostMapping("/bind")
-    public Result<Map<String, Object>> bindDoctor(@RequestBody Map<String, Object> params) {
-        Long patientId = Long.parseLong(params.get("patientId").toString());
-        Long doctorId = Long.parseLong(params.get("doctorId").toString());
-        String bindMethod = params.get("bindMethod") != null ? params.get("bindMethod").toString() : "patient";
-        String remark = params.get("remark") != null ? params.get("remark").toString() : null;
+    public Result<Map<String, Object>> bindDoctor(
+            @RequestParam Long patientId,
+            @RequestParam Long doctorId,
+            @RequestParam(required = false, defaultValue = "patient") String bindMethod,
+            @RequestParam(required = false) String remark) {
 
         boolean success = relationService.bindDoctor(patientId, doctorId, bindMethod, remark);
 
@@ -48,13 +48,38 @@ public class PatientDoctorRelationController {
     }
 
     /**
-     * 解除绑定
+     * 解除绑定（通过 relation id）
      */
     @PostMapping("/unbind")
     public Result<Map<String, Object>> unbind(@RequestBody Map<String, Object> params) {
         Long id = Long.parseLong(params.get("id").toString());
 
         boolean success = relationService.unbind(id);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", success);
+        result.put("message", success ? "解绑成功" : "解绑失败");
+
+        return Result.success(result);
+    }
+
+    /**
+     * 解除绑定（通过 patientId 和 doctorId）
+     */
+    @PostMapping("/unbind-by-ids")
+    public Result<Map<String, Object>> unbindByIds(
+            @RequestParam Long patientId,
+            @RequestParam Long doctorId) {
+        // 查找绑定关系
+        PatientDoctorRelation relation = relationService.getByPatientAndDoctor(patientId, doctorId);
+        if (relation == null) {
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", false);
+            result.put("message", "未找到绑定关系");
+            return Result.success(result);
+        }
+
+        boolean success = relationService.unbind(relation.getId());
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", success);

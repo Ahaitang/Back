@@ -10,10 +10,18 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-cache'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
-    // OpenAPI/Swagger 文档
-    implementation 'org.springdoc:springdoc-openapi-ui:1.7.0'
+    // Knife4j API 文档（Spring Boot 3.x 版本）
+    implementation 'com.github.xiaoymin:knife4j-openapi3-jakarta-spring-boot-starter:4.5.0'
     // Ensure okhttp 4.x for MinIO compatibility
     implementation 'com.squareup.okhttp3:okhttp:4.10.0'
+
+    // 排除默认的 logback，使用 log4j2
+    configurations {
+        all {
+            exclude group: 'org.springframework.boot', module: 'spring-boot-starter-logging'
+        }
+    }
+    implementation 'org.springframework.boot:spring-boot-starter-log4j2'
 }
 
 bootJar {

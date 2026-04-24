@@ -1,6 +1,7 @@
 package org.hospital.neuroimmune.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.hospital.common.model.PageRequest;
 import org.hospital.common.model.PageResult;
@@ -17,6 +18,11 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
 
     @Autowired
     private MedicalRecordMapper medicalRecordMapper;
+
+    // 状态常量: 0-进行中, 1-完成, 2-取消
+    public static final int STATUS_ONGOING = 0;
+    public static final int STATUS_COMPLETED = 1;
+    public static final int STATUS_CANCELLED = 2;
 
     @Override
     public PageResult<MedicalRecord> getList(PageRequest request) {
@@ -36,7 +42,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
 
         LambdaQueryWrapper<MedicalRecord> wrapper = new LambdaQueryWrapper<>();
         wrapper.inSql(MedicalRecord::getPatientId,
-                "SELECT id FROM patient WHERE doctor_id = " + doctorId);
+                "SELECT patient_id FROM patient_doctor_relation WHERE doctor_id = " + doctorId + " AND status = 'active'");
 
         if (request.getKeyword() != null && !request.getKeyword().isEmpty()) {
             wrapper.and(w -> w.like(MedicalRecord::getPatientName, request.getKeyword())
@@ -61,6 +67,13 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
 
     private LambdaQueryWrapper<MedicalRecord> buildQueryWrapper(PageRequest request) {
         LambdaQueryWrapper<MedicalRecord> wrapper = new LambdaQueryWrapper<>();
+
+        // 默认不显示已取消的记录，除非明确筛选
+        if (request.getStatus() != null && !request.getStatus().isEmpty()) {
+            wrapper.eq(MedicalRecord::getStatus, Integer.parseInt(request.getStatus()));
+        } else {
+            wrapper.ne(MedicalRecord::getStatus, STATUS_CANCELLED);
+        }
 
         if (request.getPatientId() != null) {
             wrapper.eq(MedicalRecord::getPatientId, request.getPatientId());
@@ -98,6 +111,9 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
 
     @Override
     public void save(MedicalRecord record) {
+        if (record.getStatus() == null) {
+            record.setStatus(STATUS_ONGOING);
+        }
         if (record.getId() == null) {
             medicalRecordMapper.insert(record);
         } else {
@@ -106,8 +122,16 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
     }
 
     @Override
-    public void delete(Long id) {
-        medicalRecordMapper.deleteById(id);
+    public void updateStatus(Long id, Integer status) {
+        MedicalRecord record = new MedicalRecord();
+        record.setId(id);
+        record.setStatus(status);
+        medicalRecordMapper.updateById(record);
+    }
+
+    @Override
+    public void cancel(Long id) {
+        updateStatus(id, STATUS_CANCELLED);
     }
 
     @Override

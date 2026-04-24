@@ -107,7 +107,7 @@ public class AIServiceClient {
                 byte[] imageBytes = Base64.getDecoder().decode(imageBase64s.get(0));
 
                 // Create mock MultipartFile or use byte array directly
-                OcrResult ocrResult = baiduOcrService.generalBasic(createMultipartFile(imageBytes));
+                OcrResult ocrResult = baiduOcrService.accurateBasic(createMultipartFile(imageBytes));
 
                 if (ocrResult.isSuccess()) {
                     log.info("OCR success from Baidu fallback");
@@ -153,7 +153,7 @@ public class AIServiceClient {
         // 2. Fallback to Baidu directly
         if (baiduOcrService != null && !files.isEmpty()) {
             try {
-                OcrResult ocrResult = baiduOcrService.generalBasic(files.get(0));
+                OcrResult ocrResult = baiduOcrService.accurateBasic(files.get(0));
                 Map<String, Object> result = new HashMap<>();
                 result.put("code", ocrResult.isSuccess() ? 200 : 500);
                 result.put("message", ocrResult.isSuccess() ? "success (baidu)" : ocrResult.getErrorMsg());

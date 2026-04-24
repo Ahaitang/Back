@@ -30,6 +30,7 @@ public class MedicalRecord {
     private String content;
     private String attachments;
     private String notes;       // 备注
+    private Integer status;      // 0-进行中, 1-完成, 2-取消
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;

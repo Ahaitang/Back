@@ -24,6 +24,10 @@ public class NeuroimmunePatientController {
     public Result<PageResult<Patient>> list(PageRequest request,
                                             @RequestHeader(value = "X-User-Role", required = false) String role,
                                             @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+        // 如果请求中指定了 doctorId，返回该医生的患者
+        if (request.getDoctorId() != null && request.getDoctorId() > 0) {
+            return Result.success(patientService.getListByDoctorId(request.getDoctorId(), request));
+        }
         // 如果是医生角色且userId有效，只能看到自己的患者
         if ("doctor".equals(role) && userId != null && userId > 0) {
             return Result.success(patientService.getListByDoctorId(userId, request));
@@ -58,9 +62,13 @@ public class NeuroimmunePatientController {
     }
 
     @PostMapping
-    public Result<Void> save(@RequestBody Patient patient) {
-        patientService.save(patient);
-        return Result.success();
+    public Result<Long> save(@RequestBody Patient patient) {
+        try {
+            patientService.save(patient);
+            return Result.success(patient.getId());  // 返回新患者的 ID
+        } catch (RuntimeException e) {
+            return Result.error(e.getMessage());  // 返回友好的错误信息
+        }
     }
 
     @PutMapping("/{id}")

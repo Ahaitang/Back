@@ -11,6 +11,7 @@ public interface MedicalRecordService {
     MedicalRecord getById(Long id);
     List<MedicalRecord> getByPatientId(Long patientId);
     void save(MedicalRecord record);
-    void delete(Long id);
+    void updateStatus(Long id, Integer status);
+    void cancel(Long id);
     Long countByPatientId(Long patientId);
 }

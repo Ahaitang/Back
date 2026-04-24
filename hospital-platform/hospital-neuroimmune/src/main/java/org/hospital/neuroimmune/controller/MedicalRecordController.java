@@ -16,46 +16,39 @@ public class MedicalRecordController {
     @Autowired
     private MedicalRecordService medicalRecordService;
 
-    /**
-     * 获取病历列表
-     * 管理员看全部，医生只看自己患者的病历，患者只看自己的
-     */
     @GetMapping
     public Result<PageResult<MedicalRecord>> list(
             PageRequest request,
             @RequestParam(required = false) Long patientId,
+            @RequestParam(required = false) String status,
             @RequestHeader(value = "X-User-Role", required = false) String role,
             @RequestHeader(value = "X-User-Id", required = false) Long userId) {
 
-        // 如果指定了patientId，按patientId查询
         if (patientId != null) {
             request.setPatientId(patientId);
             return Result.success(medicalRecordService.getList(request));
         }
 
-        // 医生角色只看自己患者的病历
         if ("doctor".equals(role) && userId != null) {
             return Result.success(medicalRecordService.getListByDoctorId(userId, request));
         }
 
-        // 患者角色只看自己的病历
         if ("patient".equals(role) && userId != null) {
             request.setPatientId(userId);
+        }
+        if (status != null && !status.isEmpty()) {
+            request.setStatus(status);
         }
 
         return Result.success(medicalRecordService.getList(request));
     }
 
-    /**
-     * 获取患者的病历列表（患者端用）
-     */
     @GetMapping("/patient/{patientId}")
     public Result<PageResult<MedicalRecord>> listByPatient(
             @PathVariable Long patientId,
             PageRequest request,
             @RequestHeader(value = "X-User-Role", required = false) String role,
             @RequestHeader(value = "X-User-Id", required = false) Long userId) {
-        // 患者只能查看自己的病历
         if ("patient".equals(role) && userId != null && !userId.equals(patientId)) {
             return Result.error("无权查看其他患者信息");
         }
@@ -81,9 +74,15 @@ public class MedicalRecordController {
         return Result.success();
     }
 
-    @DeleteMapping("/{id}")
-    public Result<Void> delete(@PathVariable Long id) {
-        medicalRecordService.delete(id);
+    @PutMapping("/{id}/status")
+    public Result<Void> updateStatus(@PathVariable Long id, @RequestParam Integer status) {
+        medicalRecordService.updateStatus(id, status);
+        return Result.success();
+    }
+
+    @PutMapping("/{id}/cancel")
+    public Result<Void> cancel(@PathVariable Long id) {
+        medicalRecordService.cancel(id);
         return Result.success();
     }
 }

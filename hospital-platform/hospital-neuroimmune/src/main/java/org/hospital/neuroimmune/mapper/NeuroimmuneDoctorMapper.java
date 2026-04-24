@@ -5,11 +5,27 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.hospital.neuroimmune.entity.Doctor;
+import java.util.List;
 
 @Mapper
 public interface NeuroimmuneDoctorMapper extends BaseMapper<Doctor> {
 
-    // 使用注解替代 XML
-    @Select("SELECT id, name, title, department, hospital, phone, password, avatar, patient_count, create_time FROM doctor WHERE phone = #{phone}")
+    @Select("SELECT id, name, title, department, hospital, phone, password, avatar, create_time, is_deleted, level FROM doctor WHERE phone = #{phone} AND (is_deleted = 0 OR is_deleted IS NULL)")
     Doctor selectByPhone(@Param("phone") String phone);
+
+    @Select("SELECT d.id, d.name, d.title, d.department, d.hospital, d.phone, d.password, d.avatar, d.create_time, d.is_deleted, d.level, GROUP_CONCAT(dr.role_code) as roles " +
+            "FROM doctor d " +
+            "INNER JOIN doctor_role dr ON d.id = dr.doctor_id AND dr.is_active = 1 AND dr.role_code = 'DOCTOR' " +
+            "WHERE (d.is_deleted = 0 OR d.is_deleted IS NULL) " +
+            "GROUP BY d.id " +
+            "ORDER BY d.create_time DESC")
+    List<Doctor> selectDoctorsWithRoles();
+
+    @Select("SELECT d.id, d.name, d.title, d.department, d.hospital, d.phone, d.password, d.avatar, d.create_time, d.is_deleted, d.level, GROUP_CONCAT(dr.role_code) as roles " +
+            "FROM doctor d " +
+            "INNER JOIN doctor_role dr ON d.id = dr.doctor_id AND dr.is_active = 1 AND dr.role_code = 'ADMIN' " +
+            "WHERE (d.is_deleted = 0 OR d.is_deleted IS NULL) " +
+            "GROUP BY d.id " +
+            "ORDER BY d.level ASC, d.create_time DESC")
+    List<Doctor> selectAdminsWithRoles();
 }

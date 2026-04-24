@@ -87,7 +87,7 @@ public class ExcelUtil {
 
             // 创建表头
             Row headerRow = sheet.createRow(0);
-            String[] headers = {"姓名*", "职称", "科室*", "医院", "手机号*", "密码"};
+            String[] headers = {"姓名*", "职称", "科室*", "医院", "手机号*", "密码*"};
             for (int i = 0; i < headers.length; i++) {
                 Cell cell = headerRow.createCell(i);
                 cell.setCellValue(headers[i]);
@@ -110,7 +110,7 @@ public class ExcelUtil {
             exampleRow.createCell(2).setCellValue("神经内科");
             exampleRow.createCell(3).setCellValue("XX医院");
             exampleRow.createCell(4).setCellValue("13800138000");
-            exampleRow.createCell(5).setCellValue("(系统自动生成)");  // 提示密码自动生成
+            exampleRow.createCell(5).setCellValue("123456");
 
             workbook.write(out);
             return out.toByteArray();
@@ -128,7 +128,7 @@ public class ExcelUtil {
 
             // 创建表头
             Row headerRow = sheet.createRow(0);
-            String[] headers = {"姓名*", "性别*", "年龄*", "手机号*", "身份证号", "密码", "医生手机号*"};
+            String[] headers = {"姓名*", "性别*", "出生日期*", "手机号*", "身份证号", "密码*", "医生手机号*"};
             for (int i = 0; i < headers.length; i++) {
                 Cell cell = headerRow.createCell(i);
                 cell.setCellValue(headers[i]);
@@ -146,10 +146,10 @@ public class ExcelUtil {
             Row exampleRow = sheet.createRow(1);
             exampleRow.createCell(0).setCellValue("李四");
             exampleRow.createCell(1).setCellValue("男");
-            exampleRow.createCell(2).setCellValue("45");
+            exampleRow.createCell(2).setCellValue("1990-01-01");
             exampleRow.createCell(3).setCellValue("13900139000");
             exampleRow.createCell(4).setCellValue("110101199001011234");
-            exampleRow.createCell(5).setCellValue("(系统自动生成)");  // 提示密码自动生成
+            exampleRow.createCell(5).setCellValue("123456");
             exampleRow.createCell(6).setCellValue("13800138000");
 
             workbook.write(out);

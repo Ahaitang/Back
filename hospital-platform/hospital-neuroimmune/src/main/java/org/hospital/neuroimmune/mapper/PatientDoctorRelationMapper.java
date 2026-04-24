@@ -45,7 +45,7 @@ public interface PatientDoctorRelationMapper extends BaseMapper<PatientDoctorRel
     // 动态 SQL 查询，保留 XML 定义
     List<PatientDoctorRelation> selectRelationList(@Param("patientName") String patientName, @Param("doctorName") String doctorName, @Param("status") String status);
 
-    @Select("SELECT COUNT(*) FROM patient_doctor_relation WHERE doctor_id = #{doctorId} AND status = 'active'")
+    @Select("SELECT CAST(COUNT(*) AS UNSIGNED) FROM patient_doctor_relation WHERE doctor_id = #{doctorId} AND status = 'active'")
     Long countByDoctorId(Long doctorId);
 
     @Update("UPDATE patient_doctor_relation SET status = 'inactive', unbind_time = NOW() WHERE id = #{id}")

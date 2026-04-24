@@ -74,6 +74,7 @@ public class PatientServiceImpl implements PatientService {
                     .filter(r -> r.getPatientId().equals(p.getId()))
                     .findFirst().orElse(null);
             if (relation != null) {
+                p.setDoctorId(relation.getDoctorId());
                 p.setDoctorName(relation.getDoctorName());
             }
         });
@@ -91,10 +92,14 @@ public class PatientServiceImpl implements PatientService {
                 .map(Patient::getId)
                 .collect(Collectors.toList());
 
-        Map<Long, String> doctorNameMap = relationService.batchGetDoctorNames(patientIds);
+        Map<Long, PatientDoctorRelation> doctorMap = relationService.batchGetActiveDoctorInfo(patientIds);
 
         patients.forEach(p -> {
-            p.setDoctorName(doctorNameMap.get(p.getId()));
+            PatientDoctorRelation relation = doctorMap.get(p.getId());
+            if (relation != null) {
+                p.setDoctorId(relation.getDoctorId());
+                p.setDoctorName(relation.getDoctorName());
+            }
         });
     }
 
@@ -133,6 +138,7 @@ public class PatientServiceImpl implements PatientService {
         if (patient != null) {
             PatientDoctorRelation relation = relationService.getActiveDoctor(id);
             if (relation != null) {
+                patient.setDoctorId(relation.getDoctorId());
                 patient.setDoctorName(relation.getDoctorName());
             }
         }
@@ -156,6 +162,18 @@ public class PatientServiceImpl implements PatientService {
         // 清除时间字段，让数据库自动处理
         patient.setCreateTime(null);
         patient.setUpdateTime(null);
+
+        // 校验手机号
+        if (patient.getPhone() != null && !patient.getPhone().isEmpty()) {
+            Patient existing = patientMapper.selectByPhone(patient.getPhone());
+            if (existing != null) {
+                // 新增时：手机号已存在则报错
+                // 编辑时：如果手机号被其他用户占用则报错
+                if (patient.getId() == null || !patient.getId().equals(existing.getId())) {
+                    throw new RuntimeException("手机号 " + patient.getPhone() + " 已被其他患者使用");
+                }
+            }
+        }
 
         if (patient.getId() == null) {
             if (patient.getPassword() != null && !patient.getPassword().startsWith("$2")) {

@@ -117,13 +117,26 @@ public class PatientDoctorRelationServiceImpl implements PatientDoctorRelationSe
         if (patientIds == null || patientIds.isEmpty()) {
             return Map.of();
         }
-        // 查询所有患者当前生效的主治医生绑定
         List<PatientDoctorRelation> relations = relationMapper.selectBatchActiveByPatientIds(patientIds);
         return relations.stream()
                 .filter(r -> r.getDoctorName() != null)
                 .collect(Collectors.toMap(
                         PatientDoctorRelation::getPatientId,
                         PatientDoctorRelation::getDoctorName
+                ));
+    }
+
+    @Override
+    public Map<Long, PatientDoctorRelation> batchGetActiveDoctorInfo(List<Long> patientIds) {
+        if (patientIds == null || patientIds.isEmpty()) {
+            return Map.of();
+        }
+        List<PatientDoctorRelation> relations = relationMapper.selectBatchActiveByPatientIds(patientIds);
+        return relations.stream()
+                .collect(Collectors.toMap(
+                        PatientDoctorRelation::getPatientId,
+                        r -> r,
+                        (a, b) -> a
                 ));
     }
 
@@ -155,6 +168,11 @@ public class PatientDoctorRelationServiceImpl implements PatientDoctorRelationSe
     @Override
     public PatientDoctorRelation getById(Long id) {
         return relationMapper.selectById(id);
+    }
+
+    @Override
+    public PatientDoctorRelation getByPatientAndDoctor(Long patientId, Long doctorId) {
+        return relationMapper.selectByPatientAndDoctor(patientId, doctorId);
     }
 
     /**

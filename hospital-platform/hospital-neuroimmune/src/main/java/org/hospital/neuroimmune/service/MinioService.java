@@ -77,8 +77,8 @@ public class MinioService {
                 .contentType(file.getContentType())
                 .build());
 
-        // 返回文件访问路径
-        return getFileUrl(objectName);
+        // 返回永久访问路径（MinIO 已设置为公开读）
+        return getPublicUrl(objectName);
     }
 
     /**

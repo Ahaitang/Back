@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -23,19 +24,18 @@ public class FollowUp {
     private String doctorName;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDateTime date;
+    private LocalDate date;
 
     private String project;
     private String type;
-    private String status;      // pending, completed, cancelled
-    private String statusText;
+    private Integer status;      // 0-进行中, 1-完成, 2-取消
     private String content;
 
     // 详细字段
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm")
     private LocalDateTime outpatientTime;       // 门诊时间
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDateTime hospitalizationTime;  // 住院时间
+    private LocalDate hospitalizationTime;  // 住院时间
     private String examinationItems;            // 检查项目
     private String hospital;                    // 医院
     private String department;                  // 科室

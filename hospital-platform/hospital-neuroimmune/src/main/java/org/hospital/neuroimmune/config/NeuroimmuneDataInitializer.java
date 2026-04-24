@@ -1,7 +1,8 @@
 package org.hospital.neuroimmune.config;
 
-import org.hospital.neuroimmune.entity.Admin;
-import org.hospital.neuroimmune.mapper.AdminMapper;
+import org.hospital.neuroimmune.entity.Doctor;
+import org.hospital.neuroimmune.mapper.NeuroimmuneDoctorMapper;
+import org.hospital.neuroimmune.service.DoctorRoleService;
 import org.hospital.common.util.PasswordUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,9 +20,11 @@ public class NeuroimmuneDataInitializer implements CommandLineRunner {
     private static final Logger logger = LoggerFactory.getLogger(NeuroimmuneDataInitializer.class);
 
     @Autowired
-    private AdminMapper adminMapper;
+    private NeuroimmuneDoctorMapper doctorMapper;
 
-    // 从环境变量读取默认密码，如果没有则使用随机密码
+    @Autowired
+    private DoctorRoleService doctorRoleService;
+
     @Value("${admin.default.password:}")
     private String defaultPassword;
 
@@ -30,23 +33,22 @@ public class NeuroimmuneDataInitializer implements CommandLineRunner {
         initAdmin();
     }
 
-    /**
-     * 初始化管理员账号
-     */
     private void initAdmin() {
         try {
-            Admin existingAdmin = adminMapper.selectByUsername("admin");
+            Doctor existingAdmin = doctorMapper.selectByPhone("admin");
             if (existingAdmin == null) {
-                Admin admin = new Admin();
-                admin.setUsername("admin");
-                // 如果环境变量配置了密码则使用，否则生成随机密码
-                String password = (defaultPassword != null && !defaultPassword.isEmpty())
-                    ? defaultPassword
-                    : generateRandomPassword();
-                admin.setPassword(PasswordUtil.encode(password));
+                Doctor admin = new Doctor();
+                admin.setPhone("admin");
                 admin.setName("系统管理员");
-                admin.setLevel(1);  // 超级管理员
-                adminMapper.insert(admin);
+                String password = (defaultPassword != null && !defaultPassword.isEmpty())
+                    ? defaultPassword : generateRandomPassword();
+                admin.setPassword(PasswordUtil.encode(password));
+                admin.setLevel(1);
+                admin.setHospital("系统管理");
+                admin.setDepartment("管理部");
+                doctorMapper.insert(admin);
+                // 添加 ADMIN 角色
+                doctorRoleService.addRoleToDoctor(admin.getId(), "ADMIN");
                 logger.info("已自动创建默认管理员账号: admin / {}", password);
                 logger.warn("请登录后立即修改默认密码！");
             } else {
@@ -57,9 +59,6 @@ public class NeuroimmuneDataInitializer implements CommandLineRunner {
         }
     }
 
-    /**
-     * 生成随机密码（8位）
-     */
     private String generateRandomPassword() {
         String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
         StringBuilder sb = new StringBuilder();

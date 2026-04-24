@@ -34,6 +34,13 @@ public interface PatientDoctorRelationService {
     Map<Long, String> batchGetDoctorNames(List<Long> patientIds);
 
     /**
+     * 批量获取患者的主治医生信息
+     * @param patientIds 患者ID列表
+     * @return Map<patientId, PatientDoctorRelation>
+     */
+    Map<Long, PatientDoctorRelation> batchGetActiveDoctorInfo(List<Long> patientIds);
+
+    /**
      * 获取医生的所有患者
      */
     List<PatientDoctorRelation> getPatientsByDoctor(Long doctorId);
@@ -62,4 +69,9 @@ public interface PatientDoctorRelationService {
      * 根据ID查询
      */
     PatientDoctorRelation getById(Long id);
+
+    /**
+     * 根据患者和医生查询绑定关系
+     */
+    PatientDoctorRelation getByPatientAndDoctor(Long patientId, Long doctorId);
 }

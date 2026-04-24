@@ -1,6 +1,9 @@
 package org.hospital.neuroimmune.config;
 
+import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.core.config.GlobalConfig;
+import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
+import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.SqlSessionTemplate;
@@ -38,6 +41,11 @@ public class NeuroimmuneDataSourceConfig {
         dbConfig.setTablePrefix("");
         globalConfig.setDbConfig(dbConfig);
         bean.setGlobalConfig(globalConfig);
+
+        // 添加分页插件
+        MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
+        interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL));
+        bean.setPlugins(interceptor);
 
         return bean.getObject();
     }

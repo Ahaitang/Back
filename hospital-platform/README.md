@@ -45,15 +45,23 @@
 
 | 层级 | 技术 |
 |------|------|
-| **框架** | Spring Boot 2.6.13 (Java 8) |
-| **ORM** | MyBatis Plus 3.5.3.1 |
-| **数据库** | MySQL 8.0（双数据库：QMG + neuroimmune） |
+| **框架** | Spring Boot 3.2.5 (Java 17) |
+| **ORM** | MyBatis Plus 3.5.9 (Spring Boot 3 专用版本) |
+| **数据库** | MySQL 8.0（三数据库：QMG + neuroimmune + session_audit） |
 | **缓存** | Redis 7（Token 存储 + 业务缓存） |
-| **认证** | JWT (jjwt 0.11.5) + Spring Security |
+| **认证** | JWT (jjwt 0.11.5) + Spring Security 6 |
 | **文件存储** | MinIO（Neuroimmune 专用） |
 | **OCR** | 百度 OCR API（身份证识别） |
-| **API 文档** | Springdoc OpenAPI 3 |
+| **日志** | Log4j2（替代 Logback） |
+| **API 文档** | Knife4j 4.5.0（增强版 Swagger UI） |
 | **构建** | Gradle 7.5.1 |
+
+### Spring Boot 3 升级说明
+
+- **Jakarta EE 命名空间**：使用 `jakarta.*` 替代 `javax.*`
+- **Spring Security 6**：使用 `SecurityFilterChain` Bean 配置
+- **MyBatis Plus**：使用 Spring Boot 3 专用 starter `mybatis-plus-spring-boot3-starter`
+- **Thymeleaf Security**：升级至 `thymeleaf-extras-springsecurity6`
 
 ---
 
@@ -89,11 +97,11 @@ hospital-platform/
 │   └── controller/           # OCR API
 │
 ├── hospital-web/             # Web 入口模块
-│   └── config/               # OpenAPI 配置
+│   └── config/               # Knife4j OpenAPI 配置
 │   └── resources/
 │       ├── application.yaml       # 主配置
 │       ├── application-dev.yaml   # 开发环境配置
-│       └── logback-spring.xml     # 日志配置
+│       └── log4j2-spring.xml      # Log4j2 日志配置
 │
 ├── build.gradle              # 根构建脚本
 ├── Dockerfile                # Docker 镜像构建
@@ -107,7 +115,7 @@ hospital-platform/
 
 ### 前置条件
 
-- JDK 8+
+- JDK 17+
 - MySQL 8.0
 - Redis 7
 - Gradle（或使用 wrapper）
@@ -136,7 +144,7 @@ cd hospital-platform
 
 4. **访问服务**
 
-- API 文档：http://localhost:8080/swagger-ui.html
+- API 文档：http://localhost:8080/doc.html (Knife4j 增强版)
 - 健康检查：http://localhost:8080/actuator/health
 
 ---
@@ -232,11 +240,12 @@ TTL:   24 小时（可配置）
 
 以下路径无需 Token：
 
-- `/api/v1/**/login` - 登录接口
-- `/api/v1/**/register` - 注册接口
-- `/swagger-ui.html`, `/swagger-ui/**` - API 文档
-- `/v3/api-docs/**` - API 文档 JSON
-- `/actuator/**` - 健康检查
+- `/api/v1/qmg/login`, `/api/v1/neuroimmune/login` - 登录接口
+- `/api/v1/qmg/register`, `/api/v1/neuroimmune/register` - 注册接口
+- `/api/v1/super-admin/login` - 超级管理员登录
+- `/doc.html`, `/swagger-ui/**`, `/v3/api-docs/**` - Knife4j API 文档
+- `/webjars/**` - Web 资源
+- `/actuator/health`, `/actuator/info` - 健康检查
 
 ### Token 管理接口
 
@@ -826,6 +835,7 @@ Docker Compose 创建以下数据卷：
 
 ## API 文档
 
+- **Knife4j 文档**：http://localhost:8080/doc.html（增强版 Swagger UI，中文界面）
 - **Swagger UI**：http://localhost:8080/swagger-ui.html
 - **API Docs JSON**：http://localhost:8080/v3/api-docs
 

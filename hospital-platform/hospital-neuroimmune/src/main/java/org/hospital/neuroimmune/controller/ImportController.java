@@ -16,9 +16,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.security.SecureRandom;
 
 @RestController
@@ -79,7 +79,7 @@ public class ImportController {
 
                 try {
                     // 验证必填字段
-                    if (row.size() < 5) {
+                    if (row.size() < 6) {
                         result.addError(i + 1, "数据列数不足");
                         continue;
                     }
@@ -89,9 +89,7 @@ public class ImportController {
                     String department = row.size() > 2 ? row.get(2).trim() : "";
                     String hospital = row.size() > 3 ? row.get(3).trim() : "";
                     String phone = row.size() > 4 ? row.get(4).trim() : "";
-                    String password = row.size() > 5 && !row.get(5).trim().isEmpty()
-                        ? row.get(5).trim()
-                        : generateRandomPassword();  // 生成随机密码而非硬编码
+                    String password = row.size() > 5 ? row.get(5).trim() : "";
 
                     // 验证必填字段
                     if (name.isEmpty()) {
@@ -104,6 +102,10 @@ public class ImportController {
                     }
                     if (phone.isEmpty()) {
                         result.addError(i + 1, "手机号不能为空");
+                        continue;
+                    }
+                    if (password.isEmpty()) {
+                        result.addError(i + 1, "密码不能为空");
                         continue;
                     }
 
@@ -165,12 +167,10 @@ public class ImportController {
 
                     String name = row.get(0).trim();
                     String gender = row.size() > 1 ? row.get(1).trim() : "";
-                    String ageStr = row.size() > 2 ? row.get(2).trim() : "";
+                    String birthDateStr = row.size() > 2 ? row.get(2).trim() : "";
                     String phone = row.size() > 3 ? row.get(3).trim() : "";
                     String idCard = row.size() > 4 ? row.get(4).trim() : "";
-                    String password = row.size() > 5 && !row.get(5).trim().isEmpty()
-                        ? row.get(5).trim()
-                        : generateRandomPassword();  // 生成随机密码而非硬编码
+                    String password = row.size() > 5 ? row.get(5).trim() : "";
                     String doctorPhone = row.size() > 6 ? row.get(6).trim() : "";
 
                     // 验证必填字段
@@ -182,8 +182,16 @@ public class ImportController {
                         result.addError(i + 1, "性别不能为空");
                         continue;
                     }
+                    if (birthDateStr.isEmpty()) {
+                        result.addError(i + 1, "出生日期不能为空");
+                        continue;
+                    }
                     if (phone.isEmpty()) {
                         result.addError(i + 1, "手机号不能为空");
+                        continue;
+                    }
+                    if (password.isEmpty()) {
+                        result.addError(i + 1, "密码不能为空");
                         continue;
                     }
                     if (doctorPhone.isEmpty()) {
@@ -191,12 +199,13 @@ public class ImportController {
                         continue;
                     }
 
-                    // 解析年龄
-                    Integer age = 0;
+                    // 解析出生日期
+                    LocalDate birthDate = null;
                     try {
-                        age = Integer.parseInt(ageStr);
-                    } catch (NumberFormatException e) {
-                        // 年龄格式错误，使用默认值
+                        birthDate = LocalDate.parse(birthDateStr);
+                    } catch (Exception e) {
+                        result.addError(i + 1, "出生日期格式错误，应为 yyyy-MM-dd");
+                        continue;
                     }
 
                     // 查找医生
@@ -217,7 +226,7 @@ public class ImportController {
                     Patient patient = new Patient();
                     patient.setName(name);
                     patient.setGender(gender);
-                    patient.setAge(age);
+                    patient.setBirthDate(birthDate);
                     patient.setPhone(phone);
                     patient.setIdCard(idCard);
                     patient.setPassword(password);
