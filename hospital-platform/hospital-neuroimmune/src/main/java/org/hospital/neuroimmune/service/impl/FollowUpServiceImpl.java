@@ -161,4 +161,15 @@ public class FollowUpServiceImpl implements FollowUpService {
         Long count = followUpMapper.selectCount(wrapper);
         return count != null ? count : 0L;
     }
+
+    @Override
+    @CacheEvict(value = {"neuro-followup", "neuro-stats"}, allEntries = true)
+    public void cancelByPatientId(Long patientId) {
+        // 批量取消患者所有随访记录
+        LambdaUpdateWrapper<FollowUp> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(FollowUp::getPatientId, patientId)
+                     .ne(FollowUp::getStatus, STATUS_CANCELLED)
+                     .set(FollowUp::getStatus, STATUS_CANCELLED);
+        followUpMapper.update(null, updateWrapper);
+    }
 }

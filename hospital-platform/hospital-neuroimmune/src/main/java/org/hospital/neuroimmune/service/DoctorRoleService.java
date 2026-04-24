@@ -7,4 +7,5 @@ public interface DoctorRoleService {
     void removeRoleFromDoctor(Long doctorId, String roleCode);
     void setDoctorRoles(Long doctorId, List<String> roleCodes);
     boolean hasRole(Long doctorId, String roleCode);
+    void deactivateRolesByDoctorId(Long doctorId);
 }

@@ -1,6 +1,7 @@
 package org.hospital.neuroimmune.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.hospital.common.model.PageResult;
 import org.hospital.neuroimmune.entity.DiseaseEpisode;
@@ -23,6 +24,8 @@ public class DiseaseEpisodeServiceImpl implements DiseaseEpisodeService {
         Page<DiseaseEpisode> page = new Page<>(request.getPageNum(), request.getPageSize());
 
         LambdaQueryWrapper<DiseaseEpisode> wrapper = new LambdaQueryWrapper<>();
+        // 只查询有效数据
+        wrapper.eq(DiseaseEpisode::getIsDeleted, 0).or().isNull(DiseaseEpisode::getIsDeleted);
         if (request.getPatientId() != null) {
             wrapper.eq(DiseaseEpisode::getPatientId, request.getPatientId());
         }
@@ -43,12 +46,20 @@ public class DiseaseEpisodeServiceImpl implements DiseaseEpisodeService {
 
     @Override
     public List<DiseaseEpisode> getByPatientId(Long patientId) {
-        return diseaseEpisodeMapper.selectByPatientId(patientId);
+        LambdaQueryWrapper<DiseaseEpisode> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(DiseaseEpisode::getPatientId, patientId);
+        wrapper.eq(DiseaseEpisode::getIsDeleted, 0).or().isNull(DiseaseEpisode::getIsDeleted);
+        wrapper.orderByDesc(DiseaseEpisode::getEpisodeDate).orderByAsc(DiseaseEpisode::getEpisodeNumber);
+        return diseaseEpisodeMapper.selectList(wrapper);
     }
 
     @Override
     public Integer countByPatientId(Long patientId) {
-        return diseaseEpisodeMapper.countByPatientId(patientId);
+        LambdaQueryWrapper<DiseaseEpisode> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(DiseaseEpisode::getPatientId, patientId);
+        wrapper.eq(DiseaseEpisode::getIsDeleted, 0).or().isNull(DiseaseEpisode::getIsDeleted);
+        Long count = diseaseEpisodeMapper.selectCount(wrapper);
+        return count != null ? count.intValue() : 0;
     }
 
     @Override
@@ -62,6 +73,19 @@ public class DiseaseEpisodeServiceImpl implements DiseaseEpisodeService {
 
     @Override
     public void delete(Long id) {
-        diseaseEpisodeMapper.deleteById(id);
+        // 逻辑删除
+        LambdaUpdateWrapper<DiseaseEpisode> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(DiseaseEpisode::getId, id).set(DiseaseEpisode::getIsDeleted, 1);
+        diseaseEpisodeMapper.update(null, updateWrapper);
+    }
+
+    @Override
+    public void deleteByPatientId(Long patientId) {
+        // 逻辑删除患者所有发作记录
+        LambdaUpdateWrapper<DiseaseEpisode> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(DiseaseEpisode::getPatientId, patientId)
+                     .eq(DiseaseEpisode::getIsDeleted, 0).or().isNull(DiseaseEpisode::getIsDeleted)
+                     .set(DiseaseEpisode::getIsDeleted, 1);
+        diseaseEpisodeMapper.update(null, updateWrapper);
     }
 }

@@ -17,4 +17,9 @@ public interface FollowUpService {
     Long getPendingCountByPatientId(Long patientId);
     List<FollowUp> getPendingByDoctorId(Long doctorId);
     Long countByPatientId(Long patientId);
+
+    /**
+     * 取消患者的所有随访记录（患者删除时调用）
+     */
+    void cancelByPatientId(Long patientId);
 }

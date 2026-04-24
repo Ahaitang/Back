@@ -50,4 +50,10 @@ public interface PatientDoctorRelationMapper extends BaseMapper<PatientDoctorRel
 
     @Update("UPDATE patient_doctor_relation SET status = 'inactive', unbind_time = NOW() WHERE id = #{id}")
     int unbind(Long id);
+
+    @Update("UPDATE patient_doctor_relation SET status = 'inactive', unbind_time = NOW() WHERE patient_id = #{patientId} AND status = 'active'")
+    int unbindAllByPatientId(@Param("patientId") Long patientId);
+
+    @Update("UPDATE patient_doctor_relation SET status = 'inactive', unbind_time = NOW() WHERE doctor_id = #{doctorId} AND status = 'active'")
+    int unbindAllByDoctorId(@Param("doctorId") Long doctorId);
 }

@@ -74,4 +74,14 @@ public interface PatientDoctorRelationService {
      * 根据患者和医生查询绑定关系
      */
     PatientDoctorRelation getByPatientAndDoctor(Long patientId, Long doctorId);
+
+    /**
+     * 解除患者的所有绑定关系（患者删除时调用）
+     */
+    void unbindAllByPatientId(Long patientId);
+
+    /**
+     * 解除医生的所有绑定关系（医生删除时调用）
+     */
+    void unbindAllByDoctorId(Long doctorId);
 }

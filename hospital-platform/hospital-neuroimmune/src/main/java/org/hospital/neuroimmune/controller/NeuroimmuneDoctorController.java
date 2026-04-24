@@ -167,10 +167,7 @@ public class NeuroimmuneDoctorController {
 
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
-        Long patientCount = patientService.countByDoctorId(id);
-        if (patientCount > 0) {
-            return Result.error("该医生下有 " + patientCount + " 名患者，无法删除");
-        }
+        // 逻辑删除，会自动解绑患者关系
         doctorService.delete(id);
         return Result.success();
     }

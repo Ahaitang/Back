@@ -2,10 +2,8 @@ package org.hospital.neuroimmune.service.impl;
 
 import org.hospital.neuroimmune.entity.PatientDoctorRelation;
 import org.hospital.neuroimmune.entity.Patient;
-import org.hospital.neuroimmune.entity.Doctor;
 import org.hospital.neuroimmune.mapper.PatientDoctorRelationMapper;
 import org.hospital.neuroimmune.mapper.NeuroimmunePatientMapper;
-import org.hospital.neuroimmune.mapper.NeuroimmuneDoctorMapper;
 import org.hospital.neuroimmune.service.PatientDoctorRelationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -25,21 +23,13 @@ public class PatientDoctorRelationServiceImpl implements PatientDoctorRelationSe
     @Autowired
     private NeuroimmunePatientMapper patientMapper;
 
-    @Autowired
-    private NeuroimmuneDoctorMapper doctorMapper;
-
     @Override
     @Transactional
     public boolean bindDoctor(Long patientId, Long doctorId, String bindMethod, String remark) {
-        // 检查患者和医生是否存在
+        // 检查患者是否存在
         Patient patient = patientMapper.selectById(patientId);
         if (patient == null) {
             throw new RuntimeException("患者不存在");
-        }
-
-        Doctor doctor = doctorMapper.selectById(doctorId);
-        if (doctor == null) {
-            throw new RuntimeException("医生不存在");
         }
 
         // 检查是否已有生效中的绑定
@@ -66,7 +56,7 @@ public class PatientDoctorRelationServiceImpl implements PatientDoctorRelationSe
         relation.setPatientId(patientId);
         relation.setPatientName(patient.getName());
         relation.setDoctorId(doctorId);
-        relation.setDoctorName(doctor.getName());
+        relation.setDoctorName(null);  // doctorName 可以后续查询填充
         relation.setRelationType("primary");
         relation.setStatus("active");
         relation.setBindMethod(bindMethod != null ? bindMethod : "patient");
@@ -74,10 +64,6 @@ public class PatientDoctorRelationServiceImpl implements PatientDoctorRelationSe
         relation.setBindTime(LocalDateTime.now());
 
         int result = relationMapper.insert(relation);
-
-        // 更新医生的患者数量
-        updateDoctorPatientCount(doctorId);
-
         return result > 0;
     }
 
@@ -90,10 +76,6 @@ public class PatientDoctorRelationServiceImpl implements PatientDoctorRelationSe
         }
 
         int result = relationMapper.unbind(id);
-
-        // 更新医生的患者数量
-        updateDoctorPatientCount(relation.getDoctorId());
-
         return result > 0;
     }
 
@@ -175,15 +157,17 @@ public class PatientDoctorRelationServiceImpl implements PatientDoctorRelationSe
         return relationMapper.selectByPatientAndDoctor(patientId, doctorId);
     }
 
-    /**
-     * 更新医生的患者数量
-     */
-    private void updateDoctorPatientCount(Long doctorId) {
-        Long count = relationMapper.countByDoctorId(doctorId);
-        Doctor doctor = doctorMapper.selectById(doctorId);
-        if (doctor != null) {
-            doctor.setPatientCount(count != null ? count.intValue() : 0);
-            doctorMapper.updateById(doctor);
-        }
+    @Override
+    @Transactional
+    public void unbindAllByPatientId(Long patientId) {
+        // 解除患者所有绑定关系
+        relationMapper.unbindAllByPatientId(patientId);
+    }
+
+    @Override
+    @Transactional
+    public void unbindAllByDoctorId(Long doctorId) {
+        // 解除医生所有绑定关系
+        relationMapper.unbindAllByDoctorId(doctorId);
     }
 }

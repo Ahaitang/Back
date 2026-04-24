@@ -11,11 +11,14 @@ import org.hospital.neuroimmune.entity.PatientDoctorRelation;
 import org.hospital.neuroimmune.mapper.NeuroimmunePatientMapper;
 import org.hospital.neuroimmune.service.PatientService;
 import org.hospital.neuroimmune.service.PatientDoctorRelationService;
+import org.hospital.neuroimmune.service.DiseaseEpisodeService;
+import org.hospital.neuroimmune.service.FollowUpService;
 import org.hospital.common.util.PasswordUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -29,6 +32,12 @@ public class PatientServiceImpl implements PatientService {
 
     @Autowired
     private PatientDoctorRelationService relationService;
+
+    @Autowired
+    private DiseaseEpisodeService diseaseEpisodeService;
+
+    @Autowired
+    private FollowUpService followUpService;
 
     @Override
     public PageResult<Patient> getList(PageRequest request) {
@@ -195,8 +204,22 @@ public class PatientServiceImpl implements PatientService {
 
     @Override
     @CacheEvict(value = "neuro-patient", key = "#id")
+    @Transactional
     public void delete(Long id) {
-        patientMapper.deleteById(id);
+        // 逻辑删除患者
+        LambdaUpdateWrapper<Patient> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(Patient::getId, id).set(Patient::getIsDeleted, 1);
+        patientMapper.update(null, updateWrapper);
+
+        // 同步设置关联信息为无效
+        // 1. 解绑患者-医生关系
+        relationService.unbindAllByPatientId(id);
+
+        // 2. 逻辑删除患者的发作记录
+        diseaseEpisodeService.deleteByPatientId(id);
+
+        // 3. 取消患者的随访记录
+        followUpService.cancelByPatientId(id);
     }
 
     @Override

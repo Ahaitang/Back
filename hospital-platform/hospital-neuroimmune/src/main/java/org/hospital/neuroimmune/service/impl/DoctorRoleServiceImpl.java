@@ -1,5 +1,6 @@
 package org.hospital.neuroimmune.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.hospital.neuroimmune.entity.DoctorRole;
 import org.hospital.neuroimmune.mapper.DoctorRoleMapper;
 import org.hospital.neuroimmune.service.DoctorRoleService;
@@ -52,5 +53,16 @@ public class DoctorRoleServiceImpl implements DoctorRoleService {
     @Override
     public boolean hasRole(Long doctorId, String roleCode) {
         return getRoleCodesByDoctorId(doctorId).contains(roleCode);
+    }
+
+    @Override
+    @Transactional
+    public void deactivateRolesByDoctorId(Long doctorId) {
+        // 将医生的所有角色设置为无效
+        LambdaUpdateWrapper<DoctorRole> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(DoctorRole::getDoctorId, doctorId)
+                     .eq(DoctorRole::getIsActive, 1)
+                     .set(DoctorRole::getIsActive, 0);
+        doctorRoleMapper.update(null, updateWrapper);
     }
 }

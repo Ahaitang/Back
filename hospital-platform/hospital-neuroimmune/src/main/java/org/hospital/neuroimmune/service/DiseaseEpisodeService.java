@@ -18,4 +18,9 @@ public interface DiseaseEpisodeService {
     void delete(Long id);
 
     Integer countByPatientId(Long patientId);
+
+    /**
+     * 逻辑删除患者的所有发作记录（患者删除时调用）
+     */
+    void deleteByPatientId(Long patientId);
 }

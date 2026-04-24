@@ -36,4 +36,6 @@ public class DiseaseEpisode {
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;
+
+    private Integer isDeleted;     // 0-有效, 1-无效
 }

@@ -14,6 +14,7 @@ import org.hospital.neuroimmune.service.PatientDoctorRelationService;
 import org.hospital.common.util.PasswordUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -175,8 +176,18 @@ public class DoctorServiceImpl implements DoctorService {
     }
 
     @Override
+    @Transactional
     public void delete(Long id) {
-        doctorMapper.deleteById(id);
+        // 逻辑删除医生
+        LambdaUpdateWrapper<Doctor> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(Doctor::getId, id).set(Doctor::getIsDeleted, 1);
+        doctorMapper.update(null, updateWrapper);
+
+        // 同步解绑医生的所有患者关系
+        relationService.unbindAllByDoctorId(id);
+
+        // 同时禁用医生的角色
+        doctorRoleService.deactivateRolesByDoctorId(id);
     }
 
     @Override
