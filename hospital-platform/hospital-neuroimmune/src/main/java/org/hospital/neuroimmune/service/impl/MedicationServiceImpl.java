@@ -177,6 +177,14 @@ public class MedicationServiceImpl implements MedicationService {
         return medicationMapper.selectCount(wrapper);
     }
 
+    @Override
+    public void deleteByPatientId(Long patientId) {
+        LambdaUpdateWrapper<Medication> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(Medication::getPatientId, patientId)
+                     .set(Medication::getIsDeleted, 1);
+        medicationMapper.update(null, updateWrapper);
+    }
+
     private void enrichWithNames(List<Medication> medications) {
         if (medications == null || medications.isEmpty()) return;
 

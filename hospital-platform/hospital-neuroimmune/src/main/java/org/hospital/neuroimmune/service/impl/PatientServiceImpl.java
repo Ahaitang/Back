@@ -14,6 +14,8 @@ import org.hospital.neuroimmune.service.PatientDoctorRelationService;
 import org.hospital.neuroimmune.service.DiseaseEpisodeService;
 import org.hospital.neuroimmune.service.PatientDiseaseService;
 import org.hospital.neuroimmune.service.FollowUpService;
+import org.hospital.neuroimmune.service.MedicalRecordService;
+import org.hospital.neuroimmune.service.MedicationService;
 import org.hospital.common.util.PasswordUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
@@ -42,6 +44,12 @@ public class PatientServiceImpl implements PatientService {
 
     @Autowired
     private PatientDiseaseService patientDiseaseService;
+
+    @Autowired
+    private MedicalRecordService medicalRecordService;
+
+    @Autowired
+    private MedicationService medicationService;
 
     @Override
     public PageResult<Patient> getList(PageRequest request) {
@@ -231,6 +239,12 @@ public class PatientServiceImpl implements PatientService {
 
         // 3. 取消患者的随访记录
         followUpService.cancelByPatientId(id);
+
+        // 4. 逻辑删除患者的病历记录
+        medicalRecordService.deleteByPatientId(id);
+
+        // 5. 逻辑删除患者的用药记录
+        medicationService.deleteByPatientId(id);
     }
 
     @Override

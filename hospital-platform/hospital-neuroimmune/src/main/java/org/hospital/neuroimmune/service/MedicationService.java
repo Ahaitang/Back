@@ -17,4 +17,5 @@ public interface MedicationService {
     void cancel(Long id);
     Long countByDoctorId(Long doctorId);
     Long countByPatientId(Long patientId);
+    void deleteByPatientId(Long patientId);
 }

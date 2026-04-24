@@ -160,6 +160,14 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
         return medicalRecordMapper.selectCount(wrapper);
     }
 
+    @Override
+    public void deleteByPatientId(Long patientId) {
+        LambdaUpdateWrapper<MedicalRecord> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(MedicalRecord::getPatientId, patientId)
+                     .set(MedicalRecord::getIsDeleted, 1);
+        medicalRecordMapper.update(null, updateWrapper);
+    }
+
     private void enrichWithNames(List<MedicalRecord> records) {
         if (records == null || records.isEmpty()) return;
 
