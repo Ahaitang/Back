@@ -2,23 +2,27 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="org.hospital.neuroimmune.mapper.PatientDoctorRelationMapper">
 
-    <!-- 动态 SQL 查询：条件筛选关系列表 -->
+    <!-- 动态 SQL 查询：条件筛选关系列表，通过 JOIN 获取名称 -->
     <select id="selectRelationList" resultType="org.hospital.neuroimmune.entity.PatientDoctorRelation">
-        SELECT id, patient_id, patient_name, doctor_id, doctor_name, relation_type, status,
-               bind_method, remark, bind_time, unbind_time, create_time
-        FROM patient_doctor_relation
+        SELECT r.id, r.patient_id, r.doctor_id, r.relation_type, r.status,
+               r.bind_method, r.remark, r.bind_time, r.unbind_time, r.create_time,
+               p.name AS patient_name, d.name AS doctor_name
+        FROM patient_doctor_relation r
+        LEFT JOIN patient p ON r.patient_id = p.id
+        LEFT JOIN doctor d ON r.doctor_id = d.id
         <where>
+            (r.is_deleted = 0 OR r.is_deleted IS NULL)
             <if test="patientName != null and patientName != ''">
-                AND patient_name LIKE CONCAT('%', #{patientName}, '%')
+                AND p.name LIKE CONCAT('%', #{patientName}, '%')
             </if>
             <if test="doctorName != null and doctorName != ''">
-                AND doctor_name LIKE CONCAT('%', #{doctorName}, '%')
+                AND d.name LIKE CONCAT('%', #{doctorName}, '%')
             </if>
             <if test="status != null and status != ''">
-                AND status = #{status}
+                AND r.status = #{status}
             </if>
         </where>
-        ORDER BY bind_time DESC
+        ORDER BY r.bind_time DESC
     </select>
 
 </mapper>

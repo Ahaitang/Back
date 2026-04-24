@@ -30,6 +30,9 @@ public class Doctor {
 
     private Integer isDeleted;     // 0-有效, 1-无效
 
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime updateTime;
+
     private Integer level;         // 管理等级，1最高，null表示普通医生
 
     @TableField(exist = false)

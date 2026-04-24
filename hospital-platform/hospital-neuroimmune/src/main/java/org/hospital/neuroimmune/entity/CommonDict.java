@@ -30,4 +30,6 @@ public class CommonDict {
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updateTime;
+
+    private Integer isDeleted;     // 0-有效, 1-无效
 }

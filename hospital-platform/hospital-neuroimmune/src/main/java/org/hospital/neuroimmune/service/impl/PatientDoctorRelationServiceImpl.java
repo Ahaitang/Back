@@ -1,6 +1,7 @@
 package org.hospital.neuroimmune.service.impl;
 
 import org.hospital.neuroimmune.entity.PatientDoctorRelation;
+import static org.hospital.neuroimmune.entity.PatientDoctorRelation.STATUS_ACTIVE;
 import org.hospital.neuroimmune.entity.Patient;
 import org.hospital.neuroimmune.mapper.PatientDoctorRelationMapper;
 import org.hospital.neuroimmune.mapper.NeuroimmunePatientMapper;
@@ -43,7 +44,7 @@ public class PatientDoctorRelationServiceImpl implements PatientDoctorRelationSe
         PatientDoctorRelation sameRelation = relationMapper.selectByPatientAndDoctor(patientId, doctorId);
         if (sameRelation != null) {
             // 重新激活
-            sameRelation.setStatus("active");
+            sameRelation.setStatus(STATUS_ACTIVE);
             sameRelation.setBindTime(LocalDateTime.now());
             sameRelation.setUnbindTime(null);
             sameRelation.setRemark(remark);
@@ -54,14 +55,13 @@ public class PatientDoctorRelationServiceImpl implements PatientDoctorRelationSe
         // 创建新绑定
         PatientDoctorRelation relation = new PatientDoctorRelation();
         relation.setPatientId(patientId);
-        relation.setPatientName(patient.getName());
         relation.setDoctorId(doctorId);
-        relation.setDoctorName(null);  // doctorName 可以后续查询填充
         relation.setRelationType("primary");
-        relation.setStatus("active");
+        relation.setStatus(STATUS_ACTIVE);
         relation.setBindMethod(bindMethod != null ? bindMethod : "patient");
         relation.setRemark(remark);
         relation.setBindTime(LocalDateTime.now());
+        // patientName/doctorName 不再存储，由 JOIN 查询时填充
 
         int result = relationMapper.insert(relation);
         return result > 0;

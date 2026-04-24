@@ -6,7 +6,11 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.hospital.common.model.PageRequest;
 import org.hospital.common.model.PageResult;
 import org.hospital.neuroimmune.entity.FollowUp;
+import org.hospital.neuroimmune.entity.Patient;
+import org.hospital.neuroimmune.entity.Doctor;
 import org.hospital.neuroimmune.mapper.FollowUpMapper;
+import org.hospital.neuroimmune.mapper.NeuroimmunePatientMapper;
+import org.hospital.neuroimmune.mapper.NeuroimmuneDoctorMapper;
 import org.hospital.neuroimmune.service.FollowUpService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
@@ -14,12 +18,21 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 public class FollowUpServiceImpl implements FollowUpService {
 
     @Autowired
     private FollowUpMapper followUpMapper;
+
+    @Autowired
+    private NeuroimmunePatientMapper patientMapper;
+
+    @Autowired
+    private NeuroimmuneDoctorMapper doctorMapper;
 
     // 状态常量: 0-进行中, 1-完成, 2-取消
     public static final int STATUS_ONGOING = 0;
@@ -34,6 +47,7 @@ public class FollowUpServiceImpl implements FollowUpService {
         wrapper.orderByDesc(FollowUp::getDate).orderByDesc(FollowUp::getCreateTime);
 
         Page<FollowUp> result = followUpMapper.selectPage(page, wrapper);
+        enrichWithNames(result.getRecords());
         return new PageResult<>(result.getRecords(), result.getTotal(), request.getPageNum(), request.getPageSize());
     }
 
@@ -46,6 +60,7 @@ public class FollowUpServiceImpl implements FollowUpService {
         wrapper.orderByDesc(FollowUp::getDate).orderByDesc(FollowUp::getCreateTime);
 
         Page<FollowUp> result = followUpMapper.selectPage(page, wrapper);
+        enrichWithNames(result.getRecords());
         return new PageResult<>(result.getRecords(), result.getTotal(), request.getPageNum(), request.getPageSize());
     }
 
@@ -67,9 +82,10 @@ public class FollowUpServiceImpl implements FollowUpService {
             wrapper.eq(FollowUp::getDoctorId, request.getDoctorId());
         }
         if (request.getKeyword() != null && !request.getKeyword().isEmpty()) {
-            wrapper.and(w -> w.like(FollowUp::getPatientName, request.getKeyword())
-                    .or().like(FollowUp::getDoctorName, request.getKeyword())
-                    .or().like(FollowUp::getProject, request.getKeyword()));
+            String keyword = request.getKeyword();
+            wrapper.and(w -> w.apply("patient_id IN (SELECT id FROM patient WHERE name LIKE {0})", "%" + keyword + "%")
+                    .or().apply("doctor_id IN (SELECT id FROM doctor WHERE name LIKE {0})", "%" + keyword + "%")
+                    .or().like(FollowUp::getProject, keyword));
         }
         if (request.getType() != null && !request.getType().isEmpty()) {
             wrapper.eq(FollowUp::getType, request.getType());
@@ -142,7 +158,9 @@ public class FollowUpServiceImpl implements FollowUpService {
         wrapper.eq(FollowUp::getDoctorId, doctorId)
                .eq(FollowUp::getStatus, STATUS_ONGOING)
                .orderByAsc(FollowUp::getDate);
-        return followUpMapper.selectList(wrapper);
+        List<FollowUp> list = followUpMapper.selectList(wrapper);
+        enrichWithNames(list);
+        return list;
     }
 
     @Override
@@ -171,5 +189,42 @@ public class FollowUpServiceImpl implements FollowUpService {
                      .ne(FollowUp::getStatus, STATUS_CANCELLED)
                      .set(FollowUp::getStatus, STATUS_CANCELLED);
         followUpMapper.update(null, updateWrapper);
+    }
+
+    private void enrichWithNames(List<FollowUp> followUps) {
+        if (followUps == null || followUps.isEmpty()) return;
+
+        List<Long> patientIds = followUps.stream()
+                .map(FollowUp::getPatientId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        List<Long> doctorIds = followUps.stream()
+                .map(FollowUp::getDoctorId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<Long, Patient> patientMap = patientIds.isEmpty() ? Map.of() :
+                patientMapper.selectBatchIds(patientIds).stream()
+                        .collect(Collectors.toMap(Patient::getId, p -> p, (a, b) -> a));
+
+        Map<Long, Doctor> doctorMap = doctorIds.isEmpty() ? Map.of() :
+                doctorMapper.selectBatchIds(doctorIds).stream()
+                        .collect(Collectors.toMap(Doctor::getId, d -> d, (a, b) -> a));
+
+        followUps.forEach(fu -> {
+            Patient p = patientMap.get(fu.getPatientId());
+            if (p != null) {
+                fu.setPatientName(p.getName());
+                fu.setPatientGender(p.getGender());
+                fu.setPatientAge(p.getAge());
+            }
+            if (fu.getDoctorId() != null) {
+                Doctor d = doctorMap.get(fu.getDoctorId());
+                if (d != null) fu.setDoctorName(d.getName());
+            }
+        });
     }
 }

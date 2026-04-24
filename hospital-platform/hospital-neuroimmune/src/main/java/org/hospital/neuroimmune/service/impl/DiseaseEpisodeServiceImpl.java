@@ -5,19 +5,27 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.hospital.common.model.PageResult;
 import org.hospital.neuroimmune.entity.DiseaseEpisode;
+import org.hospital.neuroimmune.entity.Patient;
 import org.hospital.neuroimmune.mapper.DiseaseEpisodeMapper;
+import org.hospital.neuroimmune.mapper.NeuroimmunePatientMapper;
 import org.hospital.neuroimmune.service.DiseaseEpisodeService;
 import org.hospital.common.model.PageRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 public class DiseaseEpisodeServiceImpl implements DiseaseEpisodeService {
 
     @Autowired
     private DiseaseEpisodeMapper diseaseEpisodeMapper;
+
+    @Autowired
+    private NeuroimmunePatientMapper patientMapper;
 
     @Override
     public PageResult<DiseaseEpisode> getList(PageRequest request) {
@@ -36,12 +44,15 @@ public class DiseaseEpisodeServiceImpl implements DiseaseEpisodeService {
         wrapper.orderByDesc(DiseaseEpisode::getEpisodeDate).orderByDesc(DiseaseEpisode::getCreateTime);
 
         Page<DiseaseEpisode> result = diseaseEpisodeMapper.selectPage(page, wrapper);
+        enrichWithNames(result.getRecords());
         return new PageResult<>(result.getRecords(), result.getTotal(), request.getPageNum(), request.getPageSize());
     }
 
     @Override
     public DiseaseEpisode getById(Long id) {
-        return diseaseEpisodeMapper.selectById(id);
+        DiseaseEpisode episode = diseaseEpisodeMapper.selectById(id);
+        if (episode != null) enrichSingle(episode);
+        return episode;
     }
 
     @Override
@@ -50,7 +61,9 @@ public class DiseaseEpisodeServiceImpl implements DiseaseEpisodeService {
         wrapper.eq(DiseaseEpisode::getPatientId, patientId);
         wrapper.eq(DiseaseEpisode::getIsDeleted, 0).or().isNull(DiseaseEpisode::getIsDeleted);
         wrapper.orderByDesc(DiseaseEpisode::getEpisodeDate).orderByAsc(DiseaseEpisode::getEpisodeNumber);
-        return diseaseEpisodeMapper.selectList(wrapper);
+        List<DiseaseEpisode> list = diseaseEpisodeMapper.selectList(wrapper);
+        enrichWithNames(list);
+        return list;
     }
 
     @Override
@@ -87,5 +100,31 @@ public class DiseaseEpisodeServiceImpl implements DiseaseEpisodeService {
                      .eq(DiseaseEpisode::getIsDeleted, 0).or().isNull(DiseaseEpisode::getIsDeleted)
                      .set(DiseaseEpisode::getIsDeleted, 1);
         diseaseEpisodeMapper.update(null, updateWrapper);
+    }
+
+    private void enrichWithNames(List<DiseaseEpisode> episodes) {
+        if (episodes == null || episodes.isEmpty()) return;
+
+        List<Long> patientIds = episodes.stream()
+                .map(DiseaseEpisode::getPatientId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<Long, Patient> patientMap = patientIds.isEmpty() ? Map.of() :
+                patientMapper.selectBatchIds(patientIds).stream()
+                        .collect(Collectors.toMap(Patient::getId, p -> p, (a, b) -> a));
+
+        episodes.forEach(e -> {
+            Patient p = patientMap.get(e.getPatientId());
+            if (p != null) e.setPatientName(p.getName());
+        });
+    }
+
+    private void enrichSingle(DiseaseEpisode episode) {
+        if (episode.getPatientId() != null) {
+            Patient p = patientMapper.selectById(episode.getPatientId());
+            if (p != null) episode.setPatientName(p.getName());
+        }
     }
 }

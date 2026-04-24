@@ -8,6 +8,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 患者实体
@@ -30,7 +31,8 @@ public class Patient {
     private String password;
     private String avatar;
     private String idCard;
-    private Boolean hasFollowUp;
+    @TableField(exist = false)
+    private Boolean hasFollowUp;  // 计算字段，从 follow_up 表统计
     private Boolean isRealAuth;
 
     @TableField(exist = false)
@@ -39,7 +41,8 @@ public class Patient {
     @TableField(exist = false)
     private String doctorName;  // 非持久化字段，通过 patient_doctor_relation 查询获取
 
-    private String diseaseType;
+    @TableField(exist = false)
+    private List<String> diseaseTypes;  // 从 patient_disease 表查询
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;
