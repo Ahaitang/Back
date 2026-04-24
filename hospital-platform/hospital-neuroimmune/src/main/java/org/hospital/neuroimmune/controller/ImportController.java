@@ -17,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.security.SecureRandom;
@@ -200,9 +201,9 @@ public class ImportController {
                     }
 
                     // 解析出生日期
-                    LocalDate birthDate = null;
+                    LocalDateTime birthDate = null;
                     try {
-                        birthDate = LocalDate.parse(birthDateStr);
+                        birthDate = LocalDate.parse(birthDateStr).atStartOfDay();
                     } catch (Exception e) {
                         result.addError(i + 1, "出生日期格式错误，应为 yyyy-MM-dd");
                         continue;

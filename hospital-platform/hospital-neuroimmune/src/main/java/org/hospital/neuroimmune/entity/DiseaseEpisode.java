@@ -7,7 +7,6 @@ import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -24,8 +23,8 @@ public class DiseaseEpisode {
 
     private Integer episodeNumber;     // 发作次数（第几次发作）
 
-    @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDate episodeDate; // 发作时间
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime episodeDate; // 发作时间
 
     private String chiefComplaint;     // 主诉
     private String symptoms;           // 症状

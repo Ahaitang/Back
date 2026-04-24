@@ -7,7 +7,6 @@ import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -22,8 +21,8 @@ public class Patient {
     private String name;
     private String gender;
 
-    @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDate birthDate;  // 出生日期
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime birthDate;  // 出生日期
 
     @TableField(exist = false)
     private Integer age;  // 计算字段，不持久化
@@ -59,7 +58,7 @@ public class Patient {
      */
     public Integer getAge() {
         if (birthDate == null) return null;
-        LocalDate today = LocalDate.now();
+        LocalDateTime today = LocalDateTime.now();
         int calculatedAge = today.getYear() - birthDate.getYear();
         if (today.getMonthValue() < birthDate.getMonthValue() ||
             (today.getMonthValue() == birthDate.getMonthValue() && today.getDayOfMonth() < birthDate.getDayOfMonth())) {

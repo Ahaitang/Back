@@ -7,7 +7,6 @@ import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -29,8 +28,8 @@ public class FollowUp {
     @TableField(exist = false)
     private String doctorName;
 
-    @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDate date;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime date;
 
     private String project;
     private String type;
@@ -40,8 +39,8 @@ public class FollowUp {
     // 详细字段
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm")
     private LocalDateTime outpatientTime;       // 门诊时间
-    @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDate hospitalizationTime;  // 住院时间
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime hospitalizationTime;  // 住院时间
     private String examinationItems;            // 检查项目
     private String hospital;                    // 医院
     private String department;                  // 科室

@@ -27,6 +27,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     private MedicationMapper medicationMapper;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Override
     public ScheduleDTO getScheduleByDate(String date, String role, Long userId) {
@@ -40,9 +41,9 @@ public class ScheduleServiceImpl implements ScheduleService {
         for (FollowUp fu : followUps) {
             ScheduleDTO.ScheduleItem item = new ScheduleDTO.ScheduleItem();
             item.setId(fu.getId());
-            item.setTime(formatTimeFromLocalDate(fu.getDate()));
+            item.setTime(formatTime(fu.getDate()));
             item.setWho("doctor".equals(role) ? fu.getPatientName() : fu.getDoctorName());
-            item.setDate(formatDateFromLocalDate(fu.getDate()));
+            item.setDate(formatDate(fu.getDate()));
             item.setType(fu.getType());
             item.setStatus(fu.getStatus() != null ? String.valueOf(fu.getStatus()) : "0");
             item.setContent(fu.getProject());
@@ -56,12 +57,12 @@ public class ScheduleServiceImpl implements ScheduleService {
             item.setId(med.getId());
             item.setTime(med.getFrequency()); // 用药频率作为时间
             item.setWho("doctor".equals(role) ? med.getPatientName() : med.getDoctorName());
-            item.setDate(formatDateFromLocalDate(med.getDate()));
+            item.setDate(formatDate(med.getDate()));
             // 设置结束日期
             if (med.getEndDate() != null) {
-                item.setEndDate(formatDateFromLocalDate(med.getEndDate()));
+                item.setEndDate(formatDate(med.getEndDate()));
             } else if (med.getDuration() != null && med.getDate() != null) {
-                LocalDate startDate = med.getDate();
+                LocalDate startDate = med.getDate().toLocalDate();
                 LocalDate endDate = calculateEndDate(startDate, med.getDuration());
                 item.setEndDate(endDate.format(DATE_FORMATTER));
             }
@@ -87,9 +88,11 @@ public class ScheduleServiceImpl implements ScheduleService {
 
     private List<FollowUp> getFollowUpsByDate(String date, String role, Long userId) {
         LocalDate queryDate = LocalDate.parse(date, DATE_FORMATTER);
+        LocalDateTime startOfDay = queryDate.atStartOfDay();
+        LocalDateTime endOfDay = queryDate.plusDays(1).atStartOfDay();
 
         LambdaQueryWrapper<FollowUp> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(FollowUp::getDate, queryDate);
+        wrapper.ge(FollowUp::getDate, startOfDay).lt(FollowUp::getDate, endOfDay);
 
         if ("doctor".equals(role) && userId != null) {
             wrapper.eq(FollowUp::getDoctorId, userId);
@@ -119,12 +122,12 @@ public class ScheduleServiceImpl implements ScheduleService {
                 .filter(med -> {
                     // 检查开始日期
                     if (med.getDate() == null) return false;
-                    LocalDate startDate = med.getDate();
+                    LocalDate startDate = med.getDate().toLocalDate();
 
                     // 检查结束日期（如果有 duration 但没有 endDate，计算 endDate）
                     LocalDate endDate;
                     if (med.getEndDate() != null) {
-                        endDate = med.getEndDate();
+                        endDate = med.getEndDate().toLocalDate();
                     } else if (med.getDuration() != null) {
                         endDate = calculateEndDate(startDate, med.getDuration());
                     } else {
@@ -172,23 +175,13 @@ public class ScheduleServiceImpl implements ScheduleService {
         return startDate.plusMonths(1);
     }
 
-    private String formatTimeRange(LocalDateTime dateTime) {
-        if (dateTime == null) return "";
+    private String formatTime(LocalDateTime dateTime) {
+        if (dateTime == null) return "00:00";
         return dateTime.format(DateTimeFormatter.ofPattern("HH:mm"));
     }
 
     private String formatDate(LocalDateTime dateTime) {
         if (dateTime == null) return "";
         return dateTime.format(DATE_FORMATTER);
-    }
-
-    private String formatTimeFromLocalDate(LocalDate date) {
-        if (date == null) return "";
-        return "00:00";  // LocalDate doesn't have time component
-    }
-
-    private String formatDateFromLocalDate(LocalDate date) {
-        if (date == null) return "";
-        return date.format(DATE_FORMATTER);
     }
 }
