@@ -6,15 +6,18 @@ import org.hospital.common.model.PageResult;
 import org.hospital.neuroimmune.entity.Doctor;
 import org.hospital.neuroimmune.service.DoctorService;
 import org.hospital.neuroimmune.service.DoctorRoleService;
-import org.hospital.neuroimmune.service.PatientService;
+import org.hospital.neuroimmune.service.PermissionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
+/**
+ * 医生控制器
+ * 已重构：使用 PermissionService 处理权限逻辑，业务逻辑下沉到 Service 层
+ * API 合并：
+ * - GET /doctors/all → 使用 GET /doctors?pageSize=all 或 GET /doctors?all=true
+ */
 @RestController
 @RequestMapping("/api/v1/neuroimmune/doctors")
 @CrossOrigin
@@ -27,13 +30,26 @@ public class NeuroimmuneDoctorController {
     private DoctorRoleService doctorRoleService;
 
     @Autowired
-    private PatientService patientService;
+    private PermissionService permissionService;
 
     /**
-     * 医生列表（只返回 role 包含 doctor 的用户）
+     * 医生列表（统一接口）
+     * 支持参数：
+     * - pageSize: 分页大小，默认10。传 "all" 或设置 all=true 返回全部
+     * - all: boolean，设置为 true 返回全部医生（用于下拉选择）
+     * - keyword: 关键词搜索
+     * - department: 科室筛选
      */
     @GetMapping
-    public Result<PageResult<Doctor>> list(PageRequest request) {
+    public Result<?> list(
+            PageRequest request,
+            @RequestParam(required = false) Boolean all) {
+        // 如果请求全部数据（用于下拉选择）
+        if (all != null && all) {
+            PageRequest fullRequest = new PageRequest();
+            fullRequest.setPageSize(10000);
+            return Result.success(doctorService.getDoctorList(fullRequest).getList());
+        }
         return Result.success(doctorService.getDoctorList(request));
     }
 
@@ -43,16 +59,6 @@ public class NeuroimmuneDoctorController {
     @GetMapping("/admins")
     public Result<PageResult<Doctor>> adminList(PageRequest request) {
         return Result.success(doctorService.getAdminList(request));
-    }
-
-    /**
-     * 所有医生（用于下拉选择）
-     */
-    @GetMapping("/all")
-    public Result<List<Doctor>> all() {
-        PageRequest request = new PageRequest();
-        request.setPageSize(10000);
-        return Result.success(doctorService.getDoctorList(request).getList());
     }
 
     @GetMapping("/{id}")
@@ -83,8 +89,7 @@ public class NeuroimmuneDoctorController {
 
     /**
      * 更新医生的角色列表和管理等级
-     * @param id 用户ID
-     * @param request 角色和等级请求体
+     * 权限检查逻辑已下沉到 PermissionService
      */
     @PutMapping("/{id}/roles")
     public Result<Void> updateRoles(@PathVariable Long id,
@@ -93,62 +98,14 @@ public class NeuroimmuneDoctorController {
         List<String> roleCodes = request.getRoles();
         Integer level = request.getLevel();
 
-        // 权限检查
-        Doctor currentUser = doctorService.getById(currentUserId);
-        if (currentUser == null) {
-            return Result.error("用户信息获取失败");
+        // 使用 PermissionService 检查权限
+        String error = permissionService.checkRoleUpdatePermission(currentUserId, id, roleCodes);
+        if (error != null) {
+            return Result.error(error);
         }
 
-        Doctor targetUser = doctorService.getById(id);
-        if (targetUser == null) {
-            return Result.error("用户不存在");
-        }
-
-        // 获取当前用户角色
-        List<String> currentUserRoles = doctorRoleService.getRoleCodesByDoctorId(currentUserId);
-        boolean currentUserIsAdmin = currentUserRoles.contains("ADMIN");
-
-        // 修改自己的角色
-        if (id.equals(currentUserId)) {
-            // 非管理员不能把自己设置为管理员
-            if (!currentUserIsAdmin && roleCodes.contains("ADMIN")) {
-                return Result.error("非管理员不能将自己设置为管理员");
-            }
-            // 管理员不能移除自己的管理员角色（防止意外锁死）
-            if (currentUserIsAdmin && !roleCodes.contains("ADMIN")) {
-                return Result.error("管理员不能移除自己的管理员角色");
-            }
-            // 可以修改自己的其他角色（同级修改）
-            doctorRoleService.setDoctorRoles(id, roleCodes);
-            // 同时更新等级
-            if (level != null) {
-                doctorService.updateRoleAndLevel(id, null, level);
-            }
-            return Result.success();
-        }
-
-        // 修改别人的角色 - 必须是管理员
-        if (!currentUserIsAdmin) {
-            return Result.error("只有管理员可以修改其他用户的角色");
-        }
-
-        // 管理员不能修改同级或更高等级的用户
-        Integer currentLevel = currentUser.getLevel();
-        Integer targetLevel = targetUser.getLevel();
-
-        // level 数字越小权限越高，null 表示普通医生
-        if (currentLevel == null) currentLevel = 999; // 普通管理员默认最低
-        if (targetLevel == null) targetLevel = 999;
-
-        if (currentLevel >= targetLevel) {
-            return Result.error("无权限修改同级或更高等级用户");
-        }
-
-        doctorRoleService.setDoctorRoles(id, roleCodes);
-        // 同时更新等级
-        if (level != null) {
-            doctorService.updateRoleAndLevel(id, null, level);
-        }
+        // 更新角色和等级
+        permissionService.updateUserRolesAndLevel(id, roleCodes, level);
         return Result.success();
     }
 

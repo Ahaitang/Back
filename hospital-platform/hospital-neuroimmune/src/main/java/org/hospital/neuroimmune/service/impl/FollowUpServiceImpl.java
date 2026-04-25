@@ -3,25 +3,24 @@ package org.hospital.neuroimmune.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import org.hospital.common.enums.RecordStatus;
 import org.hospital.common.model.PageRequest;
 import org.hospital.common.model.PageResult;
 import org.hospital.neuroimmune.entity.FollowUp;
-import org.hospital.neuroimmune.entity.Patient;
-import org.hospital.neuroimmune.entity.Doctor;
 import org.hospital.neuroimmune.mapper.FollowUpMapper;
-import org.hospital.neuroimmune.mapper.NeuroimmunePatientMapper;
-import org.hospital.neuroimmune.mapper.NeuroimmuneDoctorMapper;
 import org.hospital.neuroimmune.service.FollowUpService;
+import org.hospital.neuroimmune.util.EntityNameEnricher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
+/**
+ * 随访服务实现
+ * 已重构：使用 EntityNameEnricher 替代直接操作 Mapper，使用 RecordStatus 枚举替代硬编码状态值
+ */
 @Service
 public class FollowUpServiceImpl implements FollowUpService {
 
@@ -29,15 +28,7 @@ public class FollowUpServiceImpl implements FollowUpService {
     private FollowUpMapper followUpMapper;
 
     @Autowired
-    private NeuroimmunePatientMapper patientMapper;
-
-    @Autowired
-    private NeuroimmuneDoctorMapper doctorMapper;
-
-    // 状态常量: 0-进行中, 1-完成, 2-取消
-    public static final int STATUS_ONGOING = 0;
-    public static final int STATUS_COMPLETED = 1;
-    public static final int STATUS_CANCELLED = 2;
+    private EntityNameEnricher nameEnricher;
 
     @Override
     public PageResult<FollowUp> getList(PageRequest request) {
@@ -47,7 +38,7 @@ public class FollowUpServiceImpl implements FollowUpService {
         wrapper.orderByDesc(FollowUp::getDate).orderByDesc(FollowUp::getCreateTime);
 
         Page<FollowUp> result = followUpMapper.selectPage(page, wrapper);
-        enrichWithNames(result.getRecords());
+        nameEnricher.enrichFollowUps(result.getRecords());
         return new PageResult<>(result.getRecords(), result.getTotal(), request.getPageNum(), request.getPageSize());
     }
 
@@ -60,7 +51,7 @@ public class FollowUpServiceImpl implements FollowUpService {
         wrapper.orderByDesc(FollowUp::getDate).orderByDesc(FollowUp::getCreateTime);
 
         Page<FollowUp> result = followUpMapper.selectPage(page, wrapper);
-        enrichWithNames(result.getRecords());
+        nameEnricher.enrichFollowUps(result.getRecords());
         return new PageResult<>(result.getRecords(), result.getTotal(), request.getPageNum(), request.getPageSize());
     }
 
@@ -72,7 +63,7 @@ public class FollowUpServiceImpl implements FollowUpService {
             wrapper.eq(FollowUp::getStatus, Integer.parseInt(request.getStatus()));
         } else {
             // 默认只显示进行中和已完成的记录
-            wrapper.ne(FollowUp::getStatus, STATUS_CANCELLED);
+            wrapper.ne(FollowUp::getStatus, RecordStatus.CANCELLED.getCode());
         }
 
         if (request.getPatientId() != null) {
@@ -102,14 +93,16 @@ public class FollowUpServiceImpl implements FollowUpService {
 
     @Override
     public FollowUp getById(Long id) {
-        return followUpMapper.selectById(id);
+        FollowUp followUp = followUpMapper.selectById(id);
+        nameEnricher.enrichSingleFollowUp(followUp);
+        return followUp;
     }
 
     @Override
     @CacheEvict(value = {"neuro-followup", "neuro-stats"}, allEntries = true)
     public void save(FollowUp followUp) {
         if (followUp.getStatus() == null) {
-            followUp.setStatus(STATUS_ONGOING);
+            followUp.setStatus(RecordStatus.ONGOING.getCode());
         }
         if (followUp.getId() == null) {
             followUpMapper.insert(followUp);
@@ -130,14 +123,14 @@ public class FollowUpServiceImpl implements FollowUpService {
     @Override
     @CacheEvict(value = {"neuro-followup", "neuro-stats"}, allEntries = true)
     public void cancel(Long id) {
-        updateStatus(id, STATUS_CANCELLED);
+        updateStatus(id, RecordStatus.CANCELLED.getCode());
     }
 
     @Override
     @Cacheable(value = "neuro-stats", key = "'followup:pending'")
     public Long getPendingCount() {
         LambdaQueryWrapper<FollowUp> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(FollowUp::getStatus, STATUS_ONGOING);
+        wrapper.eq(FollowUp::getStatus, RecordStatus.ONGOING.getCode());
         Long count = followUpMapper.selectCount(wrapper);
         return count != null ? count : 0L;
     }
@@ -147,7 +140,7 @@ public class FollowUpServiceImpl implements FollowUpService {
     public Long getPendingCountByDoctorId(Long doctorId) {
         LambdaQueryWrapper<FollowUp> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(FollowUp::getDoctorId, doctorId)
-               .eq(FollowUp::getStatus, STATUS_ONGOING);
+               .eq(FollowUp::getStatus, RecordStatus.ONGOING.getCode());
         Long count = followUpMapper.selectCount(wrapper);
         return count != null ? count : 0L;
     }
@@ -156,10 +149,10 @@ public class FollowUpServiceImpl implements FollowUpService {
     public List<FollowUp> getPendingByDoctorId(Long doctorId) {
         LambdaQueryWrapper<FollowUp> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(FollowUp::getDoctorId, doctorId)
-               .eq(FollowUp::getStatus, STATUS_ONGOING)
+               .eq(FollowUp::getStatus, RecordStatus.ONGOING.getCode())
                .orderByAsc(FollowUp::getDate);
         List<FollowUp> list = followUpMapper.selectList(wrapper);
-        enrichWithNames(list);
+        nameEnricher.enrichFollowUps(list);
         return list;
     }
 
@@ -167,7 +160,7 @@ public class FollowUpServiceImpl implements FollowUpService {
     public Long getPendingCountByPatientId(Long patientId) {
         LambdaQueryWrapper<FollowUp> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(FollowUp::getPatientId, patientId)
-               .eq(FollowUp::getStatus, STATUS_ONGOING);
+               .eq(FollowUp::getStatus, RecordStatus.ONGOING.getCode());
         Long count = followUpMapper.selectCount(wrapper);
         return count != null ? count : 0L;
     }
@@ -186,45 +179,8 @@ public class FollowUpServiceImpl implements FollowUpService {
         // 批量取消患者所有随访记录
         LambdaUpdateWrapper<FollowUp> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(FollowUp::getPatientId, patientId)
-                     .ne(FollowUp::getStatus, STATUS_CANCELLED)
-                     .set(FollowUp::getStatus, STATUS_CANCELLED);
+                     .ne(FollowUp::getStatus, RecordStatus.CANCELLED.getCode())
+                     .set(FollowUp::getStatus, RecordStatus.CANCELLED.getCode());
         followUpMapper.update(null, updateWrapper);
-    }
-
-    private void enrichWithNames(List<FollowUp> followUps) {
-        if (followUps == null || followUps.isEmpty()) return;
-
-        List<Long> patientIds = followUps.stream()
-                .map(FollowUp::getPatientId)
-                .filter(Objects::nonNull)
-                .distinct()
-                .collect(Collectors.toList());
-
-        List<Long> doctorIds = followUps.stream()
-                .map(FollowUp::getDoctorId)
-                .filter(Objects::nonNull)
-                .distinct()
-                .collect(Collectors.toList());
-
-        Map<Long, Patient> patientMap = patientIds.isEmpty() ? Map.of() :
-                patientMapper.selectBatchIds(patientIds).stream()
-                        .collect(Collectors.toMap(Patient::getId, p -> p, (a, b) -> a));
-
-        Map<Long, Doctor> doctorMap = doctorIds.isEmpty() ? Map.of() :
-                doctorMapper.selectBatchIds(doctorIds).stream()
-                        .collect(Collectors.toMap(Doctor::getId, d -> d, (a, b) -> a));
-
-        followUps.forEach(fu -> {
-            Patient p = patientMap.get(fu.getPatientId());
-            if (p != null) {
-                fu.setPatientName(p.getName());
-                fu.setPatientGender(p.getGender());
-                fu.setPatientAge(p.getAge());
-            }
-            if (fu.getDoctorId() != null) {
-                Doctor d = doctorMap.get(fu.getDoctorId());
-                if (d != null) fu.setDoctorName(d.getName());
-            }
-        });
     }
 }

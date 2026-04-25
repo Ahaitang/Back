@@ -5,12 +5,17 @@ import org.hospital.common.model.PageRequest;
 import org.hospital.common.model.PageResult;
 import org.hospital.neuroimmune.entity.FollowUp;
 import org.hospital.neuroimmune.service.FollowUpService;
-import org.hospital.neuroimmune.service.PatientDoctorRelationService;
+import org.hospital.neuroimmune.service.PermissionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * 随访控制器
+ * 已重构：使用 PermissionService 处理权限检查
+ * API 合并：删除冗余路径，统一使用查询参数
+ */
 @RestController
 @RequestMapping("/api/v1/neuroimmune/followups")
 @CrossOrigin
@@ -20,8 +25,19 @@ public class FollowUpController {
     private FollowUpService followUpService;
 
     @Autowired
-    private PatientDoctorRelationService relationService;
+    private PermissionService permissionService;
 
+    /**
+     * 获取随访列表（统一接口）
+     * 支持参数：
+     * - patientId: 按患者筛选
+     * - doctorId: 按医生筛选
+     * - status: 按状态筛选
+     *
+     * 原路径（已删除）：
+     * - GET /followups/patient/{id} → 使用 GET /followups?patientId={id}
+     * - GET /followups/doctor/{id} → 使用 GET /followups?doctorId={id}
+     */
     @GetMapping
     public Result<PageResult<FollowUp>> list(
             PageRequest request,
@@ -46,30 +62,19 @@ public class FollowUpController {
         return Result.success(followUpService.getList(request));
     }
 
-    @GetMapping("/patient/{patientId}")
-    public Result<PageResult<FollowUp>> listByPatient(
-            @PathVariable Long patientId,
-            PageRequest request,
-            @RequestHeader(value = "X-User-Role", required = false) String role,
-            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
-        if ("patient".equals(role) && userId != null && !userId.equals(patientId)) {
-            return Result.error("无权查看其他患者信息");
+    /**
+     * 获取医生的待处理随访
+     */
+    @GetMapping("/pending")
+    public Result<List<FollowUp>> getPending(
+            @RequestHeader(value = "X-User-Id", required = false) Long userId,
+            @RequestParam(required = false) Long doctorId) {
+        // 如果指定了 doctorId，使用它；否则使用当前用户
+        Long targetDoctorId = doctorId != null ? doctorId : userId;
+        if (targetDoctorId == null) {
+            return Result.error("需要指定医生ID");
         }
-        request.setPatientId(patientId);
-        return Result.success(followUpService.getList(request));
-    }
-
-    @GetMapping("/doctor/{doctorId}")
-    public Result<PageResult<FollowUp>> listByDoctor(
-            @PathVariable Long doctorId,
-            PageRequest request) {
-        request.setDoctorId(doctorId);
-        return Result.success(followUpService.getList(request));
-    }
-
-    @GetMapping("/doctor/{doctorId}/pending")
-    public Result<List<FollowUp>> getPendingByDoctor(@PathVariable Long doctorId) {
-        return Result.success(followUpService.getPendingByDoctorId(doctorId));
+        return Result.success(followUpService.getPendingByDoctorId(targetDoctorId));
     }
 
     @GetMapping("/{id}")

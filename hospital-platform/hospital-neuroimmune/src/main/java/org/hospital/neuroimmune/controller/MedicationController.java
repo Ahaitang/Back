@@ -5,11 +5,16 @@ import org.hospital.common.model.PageRequest;
 import org.hospital.common.model.PageResult;
 import org.hospital.neuroimmune.entity.Medication;
 import org.hospital.neuroimmune.service.MedicationService;
+import org.hospital.neuroimmune.service.PermissionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * 用药控制器
+ * 已重构：使用 PermissionService 处理权限检查
+ */
 @RestController
 @RequestMapping("/api/v1/neuroimmune/medications")
 @CrossOrigin
@@ -17,6 +22,9 @@ public class MedicationController {
 
     @Autowired
     private MedicationService medicationService;
+
+    @Autowired
+    private PermissionService permissionService;
 
     @GetMapping
     public Result<PageResult<Medication>> list(
@@ -48,8 +56,10 @@ public class MedicationController {
             PageRequest request,
             @RequestHeader(value = "X-User-Role", required = false) String role,
             @RequestHeader(value = "X-User-Id", required = false) Long userId) {
-        if ("patient".equals(role) && userId != null && !userId.equals(patientId)) {
-            return Result.error("无权查看其他患者信息");
+        // 使用 PermissionService 检查权限
+        String error = permissionService.checkPatientAccessPermission(userId, role, patientId);
+        if (error != null) {
+            return Result.error(error);
         }
         request.setPatientId(patientId);
         return Result.success(medicationService.getList(request));

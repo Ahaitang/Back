@@ -3,24 +3,22 @@ package org.hospital.neuroimmune.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import org.hospital.common.enums.RecordStatus;
 import org.hospital.common.model.PageRequest;
 import org.hospital.common.model.PageResult;
 import org.hospital.neuroimmune.entity.Medication;
-import org.hospital.neuroimmune.entity.Patient;
-import org.hospital.neuroimmune.entity.Doctor;
 import org.hospital.neuroimmune.mapper.MedicationMapper;
-import org.hospital.neuroimmune.mapper.NeuroimmunePatientMapper;
-import org.hospital.neuroimmune.mapper.NeuroimmuneDoctorMapper;
 import org.hospital.neuroimmune.service.MedicationService;
+import org.hospital.neuroimmune.util.EntityNameEnricher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
+/**
+ * 用药服务实现
+ * 已重构：使用 EntityNameEnricher 替代直接操作 Mapper，使用 RecordStatus 枚举替代硬编码状态值
+ */
 @Service
 public class MedicationServiceImpl implements MedicationService {
 
@@ -28,15 +26,7 @@ public class MedicationServiceImpl implements MedicationService {
     private MedicationMapper medicationMapper;
 
     @Autowired
-    private NeuroimmunePatientMapper patientMapper;
-
-    @Autowired
-    private NeuroimmuneDoctorMapper doctorMapper;
-
-    // 状态常量: 0-进行中, 1-完成, 2-取消
-    public static final int STATUS_ONGOING = 0;
-    public static final int STATUS_COMPLETED = 1;
-    public static final int STATUS_CANCELLED = 2;
+    private EntityNameEnricher nameEnricher;
 
     @Override
     public PageResult<Medication> getList(PageRequest request) {
@@ -46,7 +36,7 @@ public class MedicationServiceImpl implements MedicationService {
         wrapper.orderByDesc(Medication::getDate).orderByDesc(Medication::getCreateTime);
 
         Page<Medication> result = medicationMapper.selectPage(page, wrapper);
-        enrichWithNames(result.getRecords());
+        nameEnricher.enrichMedications(result.getRecords());
         return new PageResult<>(result.getRecords(), result.getTotal(), request.getPageNum(), request.getPageSize());
     }
 
@@ -72,7 +62,7 @@ public class MedicationServiceImpl implements MedicationService {
         wrapper.orderByDesc(Medication::getDate).orderByDesc(Medication::getCreateTime);
 
         Page<Medication> result = medicationMapper.selectPage(page, wrapper);
-        enrichWithNames(result.getRecords());
+        nameEnricher.enrichMedications(result.getRecords());
         return new PageResult<>(result.getRecords(), result.getTotal(), request.getPageNum(), request.getPageSize());
     }
 
@@ -83,7 +73,7 @@ public class MedicationServiceImpl implements MedicationService {
         if (request.getStatus() != null && !request.getStatus().isEmpty()) {
             wrapper.eq(Medication::getStatus, Integer.parseInt(request.getStatus()));
         } else {
-            wrapper.ne(Medication::getStatus, STATUS_CANCELLED);
+            wrapper.ne(Medication::getStatus, RecordStatus.CANCELLED.getCode());
         }
 
         if (request.getPatientId() != null) {
@@ -119,7 +109,7 @@ public class MedicationServiceImpl implements MedicationService {
         wrapper.eq(Medication::getPatientId, patientId)
                .orderByDesc(Medication::getDate);
         List<Medication> list = medicationMapper.selectList(wrapper);
-        enrichWithNames(list);
+        nameEnricher.enrichMedications(list);
         return list;
     }
 
@@ -129,7 +119,7 @@ public class MedicationServiceImpl implements MedicationService {
         wrapper.eq(Medication::getDoctorId, doctorId)
                .orderByDesc(Medication::getDate);
         List<Medication> list = medicationMapper.selectList(wrapper);
-        enrichWithNames(list);
+        nameEnricher.enrichMedications(list);
         return list;
     }
 
@@ -141,7 +131,7 @@ public class MedicationServiceImpl implements MedicationService {
     @Override
     public void save(Medication medication) {
         if (medication.getStatus() == null) {
-            medication.setStatus(STATUS_ONGOING);
+            medication.setStatus(RecordStatus.ONGOING.getCode());
         }
         if (medication.getId() == null) {
             medicationMapper.insert(medication);
@@ -160,7 +150,7 @@ public class MedicationServiceImpl implements MedicationService {
 
     @Override
     public void cancel(Long id) {
-        updateStatus(id, STATUS_CANCELLED);
+        updateStatus(id, RecordStatus.CANCELLED.getCode());
     }
 
     @Override
@@ -183,38 +173,5 @@ public class MedicationServiceImpl implements MedicationService {
         updateWrapper.eq(Medication::getPatientId, patientId)
                      .set(Medication::getIsDeleted, 1);
         medicationMapper.update(null, updateWrapper);
-    }
-
-    private void enrichWithNames(List<Medication> medications) {
-        if (medications == null || medications.isEmpty()) return;
-
-        List<Long> patientIds = medications.stream()
-                .map(Medication::getPatientId)
-                .filter(Objects::nonNull)
-                .distinct()
-                .collect(Collectors.toList());
-
-        List<Long> doctorIds = medications.stream()
-                .map(Medication::getDoctorId)
-                .filter(Objects::nonNull)
-                .distinct()
-                .collect(Collectors.toList());
-
-        Map<Long, Patient> patientMap = patientIds.isEmpty() ? Map.of() :
-                patientMapper.selectBatchIds(patientIds).stream()
-                        .collect(Collectors.toMap(Patient::getId, p -> p, (a, b) -> a));
-
-        Map<Long, Doctor> doctorMap = doctorIds.isEmpty() ? Map.of() :
-                doctorMapper.selectBatchIds(doctorIds).stream()
-                        .collect(Collectors.toMap(Doctor::getId, d -> d, (a, b) -> a));
-
-        medications.forEach(m -> {
-            Patient p = patientMap.get(m.getPatientId());
-            if (p != null) m.setPatientName(p.getName());
-            if (m.getDoctorId() != null) {
-                Doctor d = doctorMap.get(m.getDoctorId());
-                if (d != null) m.setDoctorName(d.getName());
-            }
-        });
     }
 }

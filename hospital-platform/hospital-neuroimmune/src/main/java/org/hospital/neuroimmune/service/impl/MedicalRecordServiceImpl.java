@@ -3,23 +3,22 @@ package org.hospital.neuroimmune.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import org.hospital.common.enums.RecordStatus;
 import org.hospital.common.model.PageRequest;
 import org.hospital.common.model.PageResult;
 import org.hospital.neuroimmune.entity.MedicalRecord;
-import org.hospital.neuroimmune.entity.Patient;
-import org.hospital.neuroimmune.entity.Doctor;
 import org.hospital.neuroimmune.mapper.MedicalRecordMapper;
-import org.hospital.neuroimmune.mapper.NeuroimmunePatientMapper;
-import org.hospital.neuroimmune.mapper.NeuroimmuneDoctorMapper;
 import org.hospital.neuroimmune.service.MedicalRecordService;
+import org.hospital.neuroimmune.util.EntityNameEnricher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
+/**
+ * 病历服务实现
+ * 已重构：使用 EntityNameEnricher 替代直接操作 Mapper，使用 RecordStatus 枚举替代硬编码状态值
+ */
 @Service
 public class MedicalRecordServiceImpl implements MedicalRecordService {
 
@@ -27,15 +26,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
     private MedicalRecordMapper medicalRecordMapper;
 
     @Autowired
-    private NeuroimmunePatientMapper patientMapper;
-
-    @Autowired
-    private NeuroimmuneDoctorMapper doctorMapper;
-
-    // 状态常量: 0-进行中, 1-完成, 2-取消
-    public static final int STATUS_ONGOING = 0;
-    public static final int STATUS_COMPLETED = 1;
-    public static final int STATUS_CANCELLED = 2;
+    private EntityNameEnricher nameEnricher;
 
     @Override
     public PageResult<MedicalRecord> getList(PageRequest request) {
@@ -45,7 +36,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
         wrapper.orderByDesc(MedicalRecord::getDate).orderByDesc(MedicalRecord::getCreateTime);
 
         Page<MedicalRecord> result = medicalRecordMapper.selectPage(page, wrapper);
-        enrichWithNames(result.getRecords());
+        nameEnricher.enrichMedicalRecords(result.getRecords());
         return new PageResult<>(result.getRecords(), result.getTotal(), request.getPageNum(), request.getPageSize());
     }
 
@@ -75,7 +66,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
         wrapper.orderByDesc(MedicalRecord::getDate).orderByDesc(MedicalRecord::getCreateTime);
 
         Page<MedicalRecord> result = medicalRecordMapper.selectPage(page, wrapper);
-        enrichWithNames(result.getRecords());
+        nameEnricher.enrichMedicalRecords(result.getRecords());
         return new PageResult<>(result.getRecords(), result.getTotal(), request.getPageNum(), request.getPageSize());
     }
 
@@ -86,7 +77,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
         if (request.getStatus() != null && !request.getStatus().isEmpty()) {
             wrapper.eq(MedicalRecord::getStatus, Integer.parseInt(request.getStatus()));
         } else {
-            wrapper.ne(MedicalRecord::getStatus, STATUS_CANCELLED);
+            wrapper.ne(MedicalRecord::getStatus, RecordStatus.CANCELLED.getCode());
         }
 
         if (request.getPatientId() != null) {
@@ -114,7 +105,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
     @Override
     public MedicalRecord getById(Long id) {
         MedicalRecord record = medicalRecordMapper.selectById(id);
-        if (record != null) enrichSingle(record);
+        nameEnricher.enrichSingleMedicalRecord(record);
         return record;
     }
 
@@ -124,14 +115,14 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
         wrapper.eq(MedicalRecord::getPatientId, patientId)
                .orderByDesc(MedicalRecord::getDate);
         List<MedicalRecord> list = medicalRecordMapper.selectList(wrapper);
-        enrichWithNames(list);
+        nameEnricher.enrichMedicalRecords(list);
         return list;
     }
 
     @Override
     public void save(MedicalRecord record) {
         if (record.getStatus() == null) {
-            record.setStatus(STATUS_ONGOING);
+            record.setStatus(RecordStatus.ONGOING.getCode());
         }
         if (record.getId() == null) {
             medicalRecordMapper.insert(record);
@@ -150,7 +141,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
 
     @Override
     public void cancel(Long id) {
-        updateStatus(id, STATUS_CANCELLED);
+        updateStatus(id, RecordStatus.CANCELLED.getCode());
     }
 
     @Override
@@ -166,49 +157,5 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
         updateWrapper.eq(MedicalRecord::getPatientId, patientId)
                      .set(MedicalRecord::getIsDeleted, 1);
         medicalRecordMapper.update(null, updateWrapper);
-    }
-
-    private void enrichWithNames(List<MedicalRecord> records) {
-        if (records == null || records.isEmpty()) return;
-
-        List<Long> patientIds = records.stream()
-                .map(MedicalRecord::getPatientId)
-                .filter(Objects::nonNull)
-                .distinct()
-                .collect(Collectors.toList());
-
-        List<Long> doctorIds = records.stream()
-                .map(MedicalRecord::getDoctorId)
-                .filter(Objects::nonNull)
-                .distinct()
-                .collect(Collectors.toList());
-
-        Map<Long, Patient> patientMap = patientIds.isEmpty() ? Map.of() :
-                patientMapper.selectBatchIds(patientIds).stream()
-                        .collect(Collectors.toMap(Patient::getId, p -> p, (a, b) -> a));
-
-        Map<Long, Doctor> doctorMap = doctorIds.isEmpty() ? Map.of() :
-                doctorMapper.selectBatchIds(doctorIds).stream()
-                        .collect(Collectors.toMap(Doctor::getId, d -> d, (a, b) -> a));
-
-        records.forEach(r -> {
-            Patient p = patientMap.get(r.getPatientId());
-            if (p != null) r.setPatientName(p.getName());
-            if (r.getDoctorId() != null) {
-                Doctor d = doctorMap.get(r.getDoctorId());
-                if (d != null) r.setDoctorName(d.getName());
-            }
-        });
-    }
-
-    private void enrichSingle(MedicalRecord record) {
-        if (record.getPatientId() != null) {
-            Patient p = patientMapper.selectById(record.getPatientId());
-            if (p != null) record.setPatientName(p.getName());
-        }
-        if (record.getDoctorId() != null) {
-            Doctor d = doctorMapper.selectById(record.getDoctorId());
-            if (d != null) record.setDoctorName(d.getName());
-        }
     }
 }
