@@ -170,4 +170,19 @@ public class PatientDoctorRelationServiceImpl implements PatientDoctorRelationSe
         // 解除医生所有绑定关系
         relationMapper.unbindAllByDoctorId(doctorId);
     }
+
+    @Override
+    public Map<Long, Long> countByDoctorIds(List<Long> doctorIds) {
+        if (doctorIds == null || doctorIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Map<String, Object>> results = relationMapper.countByDoctorIds(doctorIds);
+        Map<Long, Long> countMap = new java.util.HashMap<>();
+        for (Map<String, Object> row : results) {
+            Long doctorId = ((Number) row.get("doctor_id")).longValue();
+            Long count = ((Number) row.get("cnt")).longValue();
+            countMap.put(doctorId, count);
+        }
+        return countMap;
+    }
 }

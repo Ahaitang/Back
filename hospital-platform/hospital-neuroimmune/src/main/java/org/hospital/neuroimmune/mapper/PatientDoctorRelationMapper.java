@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 import org.hospital.neuroimmune.entity.PatientDoctorRelation;
 import java.util.List;
+import java.util.Map;
 
 @Mapper
 public interface PatientDoctorRelationMapper extends BaseMapper<PatientDoctorRelation> {
@@ -88,4 +89,17 @@ public interface PatientDoctorRelationMapper extends BaseMapper<PatientDoctorRel
 
     @Update("UPDATE patient_doctor_relation SET status = 0, unbind_time = NOW() WHERE doctor_id = #{doctorId} AND status = 1")
     int unbindAllByDoctorId(@Param("doctorId") Long doctorId);
+
+    /**
+     * 批量统计医生的患者数量
+     */
+    @Select("<script>" +
+            "SELECT doctor_id, COUNT(*) as cnt FROM patient_doctor_relation " +
+            "WHERE status = 1 AND doctor_id IN " +
+            "<foreach item='id' collection='ids' open='(' separator=',' close=')'>" +
+            "#{id}" +
+            "</foreach>" +
+            " GROUP BY doctor_id" +
+            "</script>")
+    List<Map<String, Object>> countByDoctorIds(@Param("ids") List<Long> doctorIds);
 }

@@ -84,4 +84,9 @@ public interface PatientDoctorRelationService {
      * 解除医生的所有绑定关系（医生删除时调用）
      */
     void unbindAllByDoctorId(Long doctorId);
+
+    /**
+     * 批量统计医生的患者数量
+     */
+    Map<Long, Long> countByDoctorIds(List<Long> doctorIds);
 }
