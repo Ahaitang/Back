@@ -9,6 +9,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @ComponentScan(basePackages = {
     "org.hospital.common",
+    "org.hospital.admin",
     "org.hospital.qmg",
     "org.hospital.neuroimmune",
     "org.hospital.ocr"
