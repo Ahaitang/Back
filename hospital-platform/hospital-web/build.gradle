@@ -4,6 +4,7 @@ plugins {
 
 dependencies {
     implementation project(':hospital-common')
+    implementation project(':hospital-admin')
     implementation project(':hospital-qmg')
     implementation project(':hospital-neuroimmune')
     implementation project(':hospital-ocr')

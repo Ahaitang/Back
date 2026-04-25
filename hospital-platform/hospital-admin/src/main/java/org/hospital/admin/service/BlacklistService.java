@@ -1,11 +1,11 @@
-package org.hospital.common.service;
+package org.hospital.admin.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.extern.slf4j.Slf4j;
-import org.hospital.common.entity.BlackList;
-import org.hospital.common.mapper.BlackListMapper;
-import org.hospital.common.mapper.SystemConfigMapper;
-import org.hospital.common.entity.SystemConfig;
+import org.hospital.admin.entity.BlackList;
+import org.hospital.admin.entity.SystemConfig;
+import org.hospital.admin.mapper.BlackListMapper;
+import org.hospital.admin.mapper.SystemConfigMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;

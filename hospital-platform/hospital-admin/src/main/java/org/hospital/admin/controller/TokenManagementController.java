@@ -1,10 +1,10 @@
-package org.hospital.common.controller;
+package org.hospital.admin.controller;
 
 import org.hospital.common.audit.AuditLog;
 import org.hospital.common.audit.OperationType;
 import org.hospital.common.model.Result;
 import org.hospital.common.security.OnlineUser;
-import org.hospital.common.security.TokenManagementService;
+import org.hospital.admin.service.TokenManagementService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 

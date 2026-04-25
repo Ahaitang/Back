@@ -1,7 +1,7 @@
-package org.hospital.common.mapper;
+package org.hospital.admin.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import org.hospital.common.entity.BlackList;
+import org.hospital.admin.entity.BlackList;
 import org.apache.ibatis.annotations.Mapper;
 
 /**

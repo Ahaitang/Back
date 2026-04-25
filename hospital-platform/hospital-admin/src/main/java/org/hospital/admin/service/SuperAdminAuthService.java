@@ -1,7 +1,7 @@
-package org.hospital.common.service;
+package org.hospital.admin.service;
 
 import lombok.extern.slf4j.Slf4j;
-import org.hospital.common.config.SuperAdminConfig;
+import org.hospital.admin.config.SuperAdminConfig;
 import org.hospital.common.security.JwtUtil;
 import org.hospital.common.security.UserInfo;
 import org.hospital.common.security.TokenStorage;

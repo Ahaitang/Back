@@ -1,10 +1,10 @@
-package org.hospital.common.service;
+package org.hospital.admin.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.extern.slf4j.Slf4j;
-import org.hospital.common.entity.SessionLog;
-import org.hospital.common.mapper.SessionLogMapper;
+import org.hospital.admin.entity.SessionLog;
+import org.hospital.admin.mapper.SessionLogMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;

@@ -1,7 +1,7 @@
-package org.hospital.common.mapper;
+package org.hospital.admin.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import org.hospital.common.entity.SystemConfig;
+import org.hospital.admin.entity.SystemConfig;
 import org.apache.ibatis.annotations.Mapper;
 
 /**

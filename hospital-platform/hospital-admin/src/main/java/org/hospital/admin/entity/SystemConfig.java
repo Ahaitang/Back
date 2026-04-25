@@ -1,4 +1,4 @@
-package org.hospital.common.entity;
+package org.hospital.admin.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;

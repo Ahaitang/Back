@@ -1,4 +1,4 @@
-package org.hospital.common.config;
+package org.hospital.admin.config;
 
 import com.baomidou.mybatisplus.core.config.GlobalConfig;
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
@@ -20,7 +20,7 @@ import javax.sql.DataSource;
  * 用于审计日志和黑名单管理
  */
 @Configuration
-@MapperScan(basePackages = "org.hospital.common.mapper", sqlSessionTemplateRef = "sessionAuditSqlSessionTemplate")
+@MapperScan(basePackages = "org.hospital.admin.mapper", sqlSessionTemplateRef = "sessionAuditSqlSessionTemplate")
 public class SessionAuditDataSourceConfig {
 
     @Bean(name = "sessionAuditDataSource")
@@ -33,7 +33,7 @@ public class SessionAuditDataSourceConfig {
     public SqlSessionFactory sessionAuditSqlSessionFactory(@Qualifier("sessionAuditDataSource") DataSource dataSource) throws Exception {
         MybatisSqlSessionFactoryBean bean = new MybatisSqlSessionFactoryBean();
         bean.setDataSource(dataSource);
-        bean.setTypeAliasesPackage("org.hospital.common.entity");
+        bean.setTypeAliasesPackage("org.hospital.admin.entity");
 
         GlobalConfig globalConfig = new GlobalConfig();
         globalConfig.setDbConfig(new GlobalConfig.DbConfig());
