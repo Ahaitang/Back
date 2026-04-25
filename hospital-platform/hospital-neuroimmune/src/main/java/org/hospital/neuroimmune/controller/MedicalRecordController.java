@@ -52,22 +52,6 @@ public class MedicalRecordController {
         return Result.success(medicalRecordService.getList(request));
     }
 
-    @GetMapping("/patient/{patientId}")
-    public Result<PageResult<MedicalRecord>> listByPatient(
-            @PathVariable Long patientId,
-            PageRequest request) {
-        // 使用 PermissionService 检查权限
-        String error = permissionService.checkPatientAccessPermission(
-                SecurityContextHelper.getCurrentUserId(),
-                SecurityContextHelper.getCurrentRole(),
-                patientId);
-        if (error != null) {
-            return Result.error(error);
-        }
-        request.setPatientId(patientId);
-        return Result.success(medicalRecordService.getList(request));
-    }
-
     @GetMapping("/{id}")
     public Result<MedicalRecord> getById(@PathVariable Long id) {
         return Result.success(medicalRecordService.getById(id));

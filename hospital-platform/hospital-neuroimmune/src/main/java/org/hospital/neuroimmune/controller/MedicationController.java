@@ -51,30 +51,6 @@ public class MedicationController {
         return Result.success(medicationService.getList(request));
     }
 
-    @GetMapping("/patient/{patientId}")
-    public Result<PageResult<Medication>> listByPatient(
-            @PathVariable Long patientId,
-            PageRequest request) {
-        // 使用 PermissionService 检查权限
-        String error = permissionService.checkPatientAccessPermission(
-                SecurityContextHelper.getCurrentUserId(),
-                SecurityContextHelper.getCurrentRole(),
-                patientId);
-        if (error != null) {
-            return Result.error(error);
-        }
-        request.setPatientId(patientId);
-        return Result.success(medicationService.getList(request));
-    }
-
-    @GetMapping("/doctor/{doctorId}")
-    public Result<PageResult<Medication>> listByDoctor(
-            @PathVariable Long doctorId,
-            PageRequest request) {
-        request.setDoctorId(doctorId);
-        return Result.success(medicationService.getList(request));
-    }
-
     @GetMapping("/{id}")
     public Result<Medication> getById(@PathVariable Long id) {
         return Result.success(medicationService.getById(id));

@@ -24,25 +24,18 @@ public class AuditController {
     @Autowired
     private SessionAuditService auditService;
 
-    @PostMapping("/list")
-    public Result<PageResult<SessionLog>> getAuditLogs(@RequestBody Map<String, Object> params) {
-        int page = params.get("page") != null ? ((Number) params.get("page")).intValue() : 1;
-        int size = params.get("pageSize") != null ? ((Number) params.get("pageSize")).intValue() : 20;
-        String module = params.get("module") != null ? (String) params.get("module") : null;
-        String role = params.get("role") != null ? (String) params.get("role") : null;
-        String operationType = params.get("operationType") != null ? (String) params.get("operationType") : null;
+    @GetMapping("/list")
+    public Result<PageResult<SessionLog>> getAuditLogs(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int pageSize,
+            @RequestParam(required = false) String module,
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false) String operationType,
+            @RequestParam(required = false) LocalDateTime startTime,
+            @RequestParam(required = false) LocalDateTime endTime) {
 
-        LocalDateTime startTime = null;
-        LocalDateTime endTime = null;
-        if (params.get("startTime") != null) {
-            startTime = LocalDateTime.parse((String) params.get("startTime"));
-        }
-        if (params.get("endTime") != null) {
-            endTime = LocalDateTime.parse((String) params.get("endTime"));
-        }
-
-        Page<SessionLog> pageObj = auditService.queryLogs(module, role, operationType, startTime, endTime, page, size);
-        return Result.success(PageResult.of(pageObj.getRecords(), pageObj.getTotal(), page, size));
+        Page<SessionLog> pageObj = auditService.queryLogs(module, role, operationType, startTime, endTime, page, pageSize);
+        return Result.success(PageResult.of(pageObj.getRecords(), pageObj.getTotal(), page, pageSize));
     }
 
     @GetMapping("/stats")

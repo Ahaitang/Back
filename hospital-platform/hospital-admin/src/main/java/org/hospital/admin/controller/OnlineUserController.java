@@ -1,6 +1,7 @@
 package org.hospital.admin.controller;
 
 import lombok.extern.slf4j.Slf4j;
+import org.hospital.admin.model.KickUserRequest;
 import org.hospital.admin.service.BlacklistService;
 import org.hospital.admin.service.SessionAuditService;
 import org.hospital.common.model.Result;
@@ -8,6 +9,7 @@ import org.hospital.admin.service.TokenManagementService;
 import org.hospital.common.security.OnlineUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -37,11 +39,10 @@ public class OnlineUserController {
         return Arrays.asList(modulesConfig.split(","));
     }
 
-    @PostMapping("/list")
-    public Result<List<OnlineUser>> getOnlineUsers(@RequestBody(required = false) Map<String, String> params) {
-        String module = params != null ? params.get("module") : null;
-        String role = params != null ? params.get("role") : null;
-
+    @GetMapping("/list")
+    public Result<List<OnlineUser>> getOnlineUsers(
+            @RequestParam(required = false) String module,
+            @RequestParam(required = false) String role) {
         List<OnlineUser> users;
         if (module != null && role != null) {
             users = tokenManagementService.getOnlineUsersByRole(module, role);
@@ -72,14 +73,13 @@ public class OnlineUserController {
     }
 
     @PostMapping("/kick")
-    public Result<Void> kickUser(@RequestBody Map<String, Object> params) {
-        Long userId = ((Number) params.get("userId")).longValue();
-        String role = (String) params.get("role");
-        String module = (String) params.get("module");
-        boolean addToBlacklist = params.get("addToBlacklist") != null
-            && Boolean.TRUE.equals(params.get("addToBlacklist"));
-        int banHours = params.get("banHours") != null
-            ? ((Number) params.get("banHours")).intValue()
+    public Result<Void> kickUser(@RequestBody @Validated KickUserRequest request) {
+        Long userId = request.getUserId();
+        String role = request.getRole();
+        String module = request.getModule();
+        boolean addToBlacklist = Boolean.TRUE.equals(request.getAddToBlacklist());
+        int banHours = request.getBanHours() != null
+            ? request.getBanHours()
             : blacklistService.getDefaultBanHours();
 
         // 踢下线

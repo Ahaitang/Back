@@ -2,9 +2,11 @@ package org.hospital.admin.controller;
 
 import lombok.extern.slf4j.Slf4j;
 import org.hospital.admin.entity.BlackList;
+import org.hospital.admin.model.BlacklistAddRequest;
 import org.hospital.admin.service.BlacklistService;
 import org.hospital.common.model.Result;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -21,9 +23,8 @@ public class BlacklistController {
     @Autowired
     private BlacklistService blacklistService;
 
-    @PostMapping("/list")
-    public Result<List<BlackList>> getBlacklist(@RequestBody(required = false) Map<String, String> params) {
-        String status = params != null ? params.get("status") : null;
+    @GetMapping("/list")
+    public Result<List<BlackList>> getBlacklist(@RequestParam(required = false) String status) {
         List<BlackList> list;
         if (status != null) {
             list = blacklistService.getAllBlacklist(status);
@@ -42,13 +43,13 @@ public class BlacklistController {
     }
 
     @PostMapping("/add")
-    public Result<Void> addBlacklist(@RequestBody Map<String, Object> params) {
-        Long userId = ((Number) params.get("userId")).longValue();
-        String role = (String) params.get("role");
-        String module = (String) params.get("module");
-        String reason = (String) params.get("reason");
-        int hours = params.get("hours") != null
-            ? ((Number) params.get("hours")).intValue()
+    public Result<Void> addBlacklist(@RequestBody @Validated BlacklistAddRequest request) {
+        Long userId = request.getUserId();
+        String role = request.getRole();
+        String module = request.getModule();
+        String reason = request.getReason();
+        int hours = request.getHours() != null
+            ? request.getHours()
             : blacklistService.getDefaultBanHours();
 
         // 检查是否超过最大封禁时长
