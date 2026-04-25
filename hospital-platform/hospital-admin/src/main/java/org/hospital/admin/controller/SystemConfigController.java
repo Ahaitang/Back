@@ -1,14 +1,12 @@
 package org.hospital.admin.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.extern.slf4j.Slf4j;
 import org.hospital.admin.entity.SystemConfig;
-import org.hospital.admin.mapper.SystemConfigMapper;
+import org.hospital.admin.service.SystemConfigService;
 import org.hospital.common.model.Result;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.*;
 
 /**
@@ -21,11 +19,11 @@ import java.util.*;
 public class SystemConfigController {
 
     @Autowired
-    private SystemConfigMapper systemConfigMapper;
+    private SystemConfigService systemConfigService;
 
     @GetMapping("/list")
     public Result<List<SystemConfig>> getConfigs() {
-        List<SystemConfig> configs = systemConfigMapper.selectList(null);
+        List<SystemConfig> configs = systemConfigService.getAllConfigs();
         return Result.success(configs);
     }
 
@@ -38,22 +36,7 @@ public class SystemConfigController {
             return Result.error(400, "参数不完整");
         }
 
-        LambdaQueryWrapper<SystemConfig> wrapper =
-            new LambdaQueryWrapper<>();
-        wrapper.eq(SystemConfig::getConfigKey, key);
-        SystemConfig config = systemConfigMapper.selectOne(wrapper);
-
-        if (config != null) {
-            config.setConfigValue(value);
-            config.setUpdateTime(LocalDateTime.now());
-            systemConfigMapper.updateById(config);
-        } else {
-            SystemConfig newConfig = new SystemConfig();
-            newConfig.setConfigKey(key);
-            newConfig.setConfigValue(value);
-            systemConfigMapper.insert(newConfig);
-        }
-
+        systemConfigService.updateConfig(key, value);
         return Result.success();
     }
 }
