@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.hospital.neuroimmune.mapper.NeuroimmuneDoctorMapper">
+
+    <select id="selectDoctorsWithRolesPaged" resultType="org.hospital.neuroimmune.entity.Doctor">
+        SELECT d.id, d.name, d.title, d.department, d.hospital, d.phone, d.password, d.avatar, d.create_time, d.is_deleted, d.level
+        FROM doctor d
+        INNER JOIN doctor_role dr ON d.id = dr.doctor_id AND dr.is_active = 1 AND dr.role_code = 'DOCTOR'
+        WHERE d.is_deleted = 0
+        <if test="keyword != null and keyword != ''">
+            AND (d.name LIKE CONCAT('%', #{keyword}, '%')
+                 OR d.phone LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="department != null and department != ''">
+            AND d.department = #{department}
+        </if>
+        ORDER BY d.create_time DESC
+    </select>
+
+    <select id="selectAdminsWithRolesPaged" resultType="org.hospital.neuroimmune.entity.Doctor">
+        SELECT d.id, d.name, d.title, d.department, d.hospital, d.phone, d.password, d.avatar, d.create_time, d.is_deleted, d.level
+        FROM doctor d
+        INNER JOIN doctor_role dr ON d.id = dr.doctor_id AND dr.is_active = 1 AND dr.role_code = 'ADMIN'
+        WHERE d.is_deleted = 0
+        <if test="keyword != null and keyword != ''">
+            AND (d.name LIKE CONCAT('%', #{keyword}, '%')
+                 OR d.phone LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY d.level ASC, d.create_time DESC
+    </select>
+
+</mapper>

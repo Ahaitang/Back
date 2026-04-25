@@ -2,6 +2,7 @@ package org.hospital.neuroimmune.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.hospital.common.model.LoginRequest;
 import org.hospital.common.model.PageRequest;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 @Service("neuroimmuneDoctorService")
 public class DoctorServiceImpl implements DoctorService {
@@ -61,65 +63,36 @@ public class DoctorServiceImpl implements DoctorService {
 
     @Override
     public PageResult<Doctor> getDoctorList(PageRequest request) {
-        // 使用 DoctorRoleMapper 查询有 DOCTOR 角色的医生
-        List<Doctor> doctors = doctorMapper.selectDoctorsWithRoles();
+        // 使用数据库分页查询有 DOCTOR 角色的医生
+        Page<Doctor> page = new Page<>(request.getPageNum(), request.getPageSize());
+        IPage<Doctor> result = doctorMapper.selectDoctorsWithRolesPaged(page,
+                request.getKeyword(), request.getDepartment());
 
-        // 关键词过滤
-        if (request.getKeyword() != null && !request.getKeyword().isEmpty()) {
-            doctors = doctors.stream()
-                    .filter(d -> d.getName().contains(request.getKeyword()) ||
-                            (d.getPhone() != null && d.getPhone().contains(request.getKeyword())))
-                    .toList();
-        }
+        // 批量设置每个医生的患者数量
+        List<Long> ids = result.getRecords().stream().map(Doctor::getId).toList();
+        Map<Long, Long> countMap = relationService.countByDoctorIds(ids);
+        result.getRecords().forEach(d ->
+                d.setPatientCount(countMap.getOrDefault(d.getId(), 0L).intValue()));
 
-        // 部门过滤
-        if (request.getDepartment() != null && !request.getDepartment().isEmpty()) {
-            doctors = doctors.stream()
-                    .filter(d -> d.getDepartment() != null && d.getDepartment().equals(request.getDepartment()))
-                    .toList();
-        }
-
-        // 设置每个医生的患者数量
-        doctors.forEach(doctor -> {
-            Long count = relationService.countPatientsByDoctor(doctor.getId());
-            doctor.setPatientCount(count.intValue());
-        });
-
-        // 手动分页
-        int total = doctors.size();
-        int start = (request.getPageNum() - 1) * request.getPageSize();
-        int end = Math.min(start + request.getPageSize(), total);
-        List<Doctor> pageData = doctors.subList(start, end);
-
-        return new PageResult<>(pageData, (long) total, request.getPageNum(), request.getPageSize());
+        return new PageResult<>(result.getRecords(), result.getTotal(),
+                request.getPageNum(), request.getPageSize());
     }
 
     @Override
     public PageResult<Doctor> getAdminList(PageRequest request) {
-        // 使用 DoctorRoleMapper 查询有 ADMIN 角色的医生
-        List<Doctor> admins = doctorMapper.selectAdminsWithRoles();
+        // 使用数据库分页查询有 ADMIN 角色的医生
+        Page<Doctor> page = new Page<>(request.getPageNum(), request.getPageSize());
+        IPage<Doctor> result = doctorMapper.selectAdminsWithRolesPaged(page,
+                request.getKeyword());
 
-        // 关键词过滤
-        if (request.getKeyword() != null && !request.getKeyword().isEmpty()) {
-            admins = admins.stream()
-                    .filter(d -> d.getName().contains(request.getKeyword()) ||
-                            (d.getPhone() != null && d.getPhone().contains(request.getKeyword())))
-                    .toList();
-        }
+        // 批量设置每个管理员的患者数量
+        List<Long> ids = result.getRecords().stream().map(Doctor::getId).toList();
+        Map<Long, Long> countMap = relationService.countByDoctorIds(ids);
+        result.getRecords().forEach(d ->
+                d.setPatientCount(countMap.getOrDefault(d.getId(), 0L).intValue()));
 
-        // 设置每个管理员的患者数量
-        admins.forEach(doctor -> {
-            Long count = relationService.countPatientsByDoctor(doctor.getId());
-            doctor.setPatientCount(count.intValue());
-        });
-
-        // 手动分页
-        int total = admins.size();
-        int start = (request.getPageNum() - 1) * request.getPageSize();
-        int end = Math.min(start + request.getPageSize(), total);
-        List<Doctor> pageData = admins.subList(start, end);
-
-        return new PageResult<>(pageData, (long) total, request.getPageNum(), request.getPageSize());
+        return new PageResult<>(result.getRecords(), result.getTotal(),
+                request.getPageNum(), request.getPageSize());
     }
 
     @Override

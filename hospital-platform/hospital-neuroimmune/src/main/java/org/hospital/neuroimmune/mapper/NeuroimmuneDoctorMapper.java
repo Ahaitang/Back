@@ -1,6 +1,8 @@
 package org.hospital.neuroimmune.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -28,4 +30,17 @@ public interface NeuroimmuneDoctorMapper extends BaseMapper<Doctor> {
             "GROUP BY d.id " +
             "ORDER BY d.level ASC, d.create_time DESC")
     List<Doctor> selectAdminsWithRoles();
+
+    /**
+     * 查询有 DOCTOR 角色的医生（数据库分页）
+     */
+    IPage<Doctor> selectDoctorsWithRolesPaged(Page<Doctor> page,
+            @Param("keyword") String keyword,
+            @Param("department") String department);
+
+    /**
+     * 查询有 ADMIN 角色的医生（数据库分页）
+     */
+    IPage<Doctor> selectAdminsWithRolesPaged(Page<Doctor> page,
+            @Param("keyword") String keyword);
 }
