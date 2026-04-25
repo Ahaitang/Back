@@ -7,17 +7,19 @@ import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
-import org.hospital.common.enums.RecordStatus;
+import lombok.EqualsAndHashCode;
+import org.hospital.common.model.BaseRecordEntity;
 
 import java.time.LocalDateTime;
 
 /**
  * 随访记录实体
- * 已重构：添加领域行为方法
+ * 继承 BaseRecordEntity，复用状态管理行为
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
 @TableName("follow_up")
-public class FollowUp {
+public class FollowUp extends BaseRecordEntity {
     @TableId(type = IdType.AUTO)
     private Long id;
     private Long patientId;
@@ -36,7 +38,6 @@ public class FollowUp {
 
     private String project;
     private String type;
-    private Integer status;      // 0-进行中, 1-完成, 2-取消
     private String content;
 
     // 详细字段
@@ -57,55 +58,4 @@ public class FollowUp {
 
     @TableLogic
     private Integer isDeleted;     // 0-有效, 1-无效
-
-    // ===== 领域行为方法 =====
-
-    /**
-     * 判断是否进行中
-     */
-    public boolean isOngoing() {
-        return RecordStatus.ONGOING.getCode() == (status != null ? status : 0);
-    }
-
-    /**
-     * 判断是否已完成
-     */
-    public boolean isCompleted() {
-        return RecordStatus.COMPLETED.getCode() == (status != null ? status : 0);
-    }
-
-    /**
-     * 判断是否已取消
-     */
-    public boolean isCancelled() {
-        return RecordStatus.CANCELLED.getCode() == (status != null ? status : 0);
-    }
-
-    /**
-     * 标记为进行中
-     */
-    public void markOngoing() {
-        this.status = RecordStatus.ONGOING.getCode();
-    }
-
-    /**
-     * 标记为已完成
-     */
-    public void markCompleted() {
-        this.status = RecordStatus.COMPLETED.getCode();
-    }
-
-    /**
-     * 标记为已取消
-     */
-    public void markCancelled() {
-        this.status = RecordStatus.CANCELLED.getCode();
-    }
-
-    /**
-     * 获取状态枚举
-     */
-    public RecordStatus getRecordStatus() {
-        return RecordStatus.fromCode(status != null ? status : 0);
-    }
 }
