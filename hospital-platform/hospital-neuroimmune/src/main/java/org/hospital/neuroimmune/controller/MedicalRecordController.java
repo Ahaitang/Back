@@ -3,6 +3,7 @@ package org.hospital.neuroimmune.controller;
 import org.hospital.common.model.Result;
 import org.hospital.common.model.PageRequest;
 import org.hospital.common.model.PageResult;
+import org.hospital.common.security.SecurityContextHelper;
 import org.hospital.neuroimmune.entity.MedicalRecord;
 import org.hospital.neuroimmune.service.MedicalRecordService;
 import org.hospital.neuroimmune.service.PermissionService;
@@ -28,21 +29,21 @@ public class MedicalRecordController {
     public Result<PageResult<MedicalRecord>> list(
             PageRequest request,
             @RequestParam(required = false) Long patientId,
-            @RequestParam(required = false) String status,
-            @RequestHeader(value = "X-User-Role", required = false) String role,
-            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+            @RequestParam(required = false) String status) {
+
+        Long currentUserId = SecurityContextHelper.getCurrentUserId();
 
         if (patientId != null) {
             request.setPatientId(patientId);
             return Result.success(medicalRecordService.getList(request));
         }
 
-        if ("doctor".equals(role) && userId != null) {
-            return Result.success(medicalRecordService.getListByDoctorId(userId, request));
+        if (SecurityContextHelper.isDoctor() && currentUserId != null) {
+            return Result.success(medicalRecordService.getListByDoctorId(currentUserId, request));
         }
 
-        if ("patient".equals(role) && userId != null) {
-            request.setPatientId(userId);
+        if (SecurityContextHelper.isPatient() && currentUserId != null) {
+            request.setPatientId(currentUserId);
         }
         if (status != null && !status.isEmpty()) {
             request.setStatus(status);
@@ -54,11 +55,12 @@ public class MedicalRecordController {
     @GetMapping("/patient/{patientId}")
     public Result<PageResult<MedicalRecord>> listByPatient(
             @PathVariable Long patientId,
-            PageRequest request,
-            @RequestHeader(value = "X-User-Role", required = false) String role,
-            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+            PageRequest request) {
         // 使用 PermissionService 检查权限
-        String error = permissionService.checkPatientAccessPermission(userId, role, patientId);
+        String error = permissionService.checkPatientAccessPermission(
+                SecurityContextHelper.getCurrentUserId(),
+                SecurityContextHelper.getCurrentRole(),
+                patientId);
         if (error != null) {
             return Result.error(error);
         }

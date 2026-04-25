@@ -3,6 +3,7 @@ package org.hospital.neuroimmune.controller;
 import org.hospital.common.model.Result;
 import org.hospital.common.model.PageRequest;
 import org.hospital.common.model.PageResult;
+import org.hospital.common.security.SecurityContextHelper;
 import org.hospital.neuroimmune.entity.Patient;
 import org.hospital.neuroimmune.service.PatientService;
 import org.hospital.neuroimmune.service.PermissionService;
@@ -39,13 +40,14 @@ public class NeuroimmunePatientController {
     @GetMapping
     public Result<PageResult<Patient>> list(
             PageRequest request,
-            @RequestParam(required = false) Boolean mine,
-            @RequestHeader(value = "X-User-Role", required = false) String role,
-            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+            @RequestParam(required = false) Boolean mine) {
+
+        Long currentUserId = SecurityContextHelper.getCurrentUserId();
+        String currentRole = SecurityContextHelper.getCurrentRole();
 
         // 如果请求自己的患者列表
-        if (mine != null && mine && "doctor".equals(role) && userId != null) {
-            return Result.success(patientService.getListByDoctorId(userId, request));
+        if (mine != null && mine && SecurityContextHelper.isDoctor()) {
+            return Result.success(patientService.getListByDoctorId(currentUserId, request));
         }
 
         // 如果请求中指定了 doctorId，返回该医生的患者
@@ -53,23 +55,24 @@ public class NeuroimmunePatientController {
             return Result.success(patientService.getListByDoctorId(request.getDoctorId(), request));
         }
         // 如果是医生角色且userId有效，只能看到自己的患者
-        if ("doctor".equals(role) && userId != null && userId > 0) {
-            return Result.success(patientService.getListByDoctorId(userId, request));
+        if (SecurityContextHelper.isDoctor() && currentUserId != null && currentUserId > 0) {
+            return Result.success(patientService.getListByDoctorId(currentUserId, request));
         }
         // 如果是患者角色且userId有效，只能看到自己的信息
-        if ("patient".equals(role) && userId != null && userId > 0) {
-            return Result.success(patientService.getByIdAsPageResult(userId));
+        if (SecurityContextHelper.isPatient() && currentUserId != null && currentUserId > 0) {
+            return Result.success(patientService.getByIdAsPageResult(currentUserId));
         }
         // 管理员或其他情况，返回所有患者
         return Result.success(patientService.getList(request));
     }
 
     @GetMapping("/{id}")
-    public Result<Patient> getById(@PathVariable Long id,
-                                   @RequestHeader(value = "X-User-Role", required = false) String role,
-                                   @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+    public Result<Patient> getById(@PathVariable Long id) {
         // 使用 PermissionService 检查权限
-        String error = permissionService.checkPatientAccessPermission(userId, role, id);
+        String error = permissionService.checkPatientAccessPermission(
+                SecurityContextHelper.getCurrentUserId(),
+                SecurityContextHelper.getCurrentRole(),
+                id);
         if (error != null) {
             return Result.error(error);
         }

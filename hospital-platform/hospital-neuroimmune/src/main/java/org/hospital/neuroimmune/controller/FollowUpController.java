@@ -3,6 +3,7 @@ package org.hospital.neuroimmune.controller;
 import org.hospital.common.model.Result;
 import org.hospital.common.model.PageRequest;
 import org.hospital.common.model.PageResult;
+import org.hospital.common.security.SecurityContextHelper;
 import org.hospital.neuroimmune.entity.FollowUp;
 import org.hospital.neuroimmune.service.FollowUpService;
 import org.hospital.neuroimmune.service.PermissionService;
@@ -43,14 +44,15 @@ public class FollowUpController {
             PageRequest request,
             @RequestParam(required = false) Long patientId,
             @RequestParam(required = false) Long doctorId,
-            @RequestParam(required = false) String status,
-            @RequestHeader(value = "X-User-Role", required = false) String role,
-            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+            @RequestParam(required = false) String status) {
 
-        if ("doctor".equals(role) && userId != null) {
-            request.setDoctorId(userId);
-        } else if ("patient".equals(role) && userId != null) {
-            request.setPatientId(userId);
+        Long currentUserId = SecurityContextHelper.getCurrentUserId();
+        String currentRole = SecurityContextHelper.getCurrentRole();
+
+        if (SecurityContextHelper.isDoctor() && currentUserId != null) {
+            request.setDoctorId(currentUserId);
+        } else if (SecurityContextHelper.isPatient() && currentUserId != null) {
+            request.setPatientId(currentUserId);
         } else {
             if (patientId != null) request.setPatientId(patientId);
             if (doctorId != null) request.setDoctorId(doctorId);
@@ -67,10 +69,9 @@ public class FollowUpController {
      */
     @GetMapping("/pending")
     public Result<List<FollowUp>> getPending(
-            @RequestHeader(value = "X-User-Id", required = false) Long userId,
             @RequestParam(required = false) Long doctorId) {
         // 如果指定了 doctorId，使用它；否则使用当前用户
-        Long targetDoctorId = doctorId != null ? doctorId : userId;
+        Long targetDoctorId = doctorId != null ? doctorId : SecurityContextHelper.getCurrentUserId();
         if (targetDoctorId == null) {
             return Result.error("需要指定医生ID");
         }

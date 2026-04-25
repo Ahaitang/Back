@@ -3,6 +3,7 @@ package org.hospital.neuroimmune.controller;
 import org.hospital.common.model.Result;
 import org.hospital.common.model.PageRequest;
 import org.hospital.common.model.PageResult;
+import org.hospital.common.security.SecurityContextHelper;
 import org.hospital.neuroimmune.entity.Medication;
 import org.hospital.neuroimmune.service.MedicationService;
 import org.hospital.neuroimmune.service.PermissionService;
@@ -31,14 +32,14 @@ public class MedicationController {
             PageRequest request,
             @RequestParam(required = false) Long patientId,
             @RequestParam(required = false) Long doctorId,
-            @RequestParam(required = false) String status,
-            @RequestHeader(value = "X-User-Role", required = false) String role,
-            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+            @RequestParam(required = false) String status) {
 
-        if ("doctor".equals(role) && userId != null) {
-            request.setDoctorId(userId);
-        } else if ("patient".equals(role) && userId != null) {
-            request.setPatientId(userId);
+        Long currentUserId = SecurityContextHelper.getCurrentUserId();
+
+        if (SecurityContextHelper.isDoctor() && currentUserId != null) {
+            request.setDoctorId(currentUserId);
+        } else if (SecurityContextHelper.isPatient() && currentUserId != null) {
+            request.setPatientId(currentUserId);
         } else {
             if (patientId != null) request.setPatientId(patientId);
             if (doctorId != null) request.setDoctorId(doctorId);
@@ -53,11 +54,12 @@ public class MedicationController {
     @GetMapping("/patient/{patientId}")
     public Result<PageResult<Medication>> listByPatient(
             @PathVariable Long patientId,
-            PageRequest request,
-            @RequestHeader(value = "X-User-Role", required = false) String role,
-            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+            PageRequest request) {
         // 使用 PermissionService 检查权限
-        String error = permissionService.checkPatientAccessPermission(userId, role, patientId);
+        String error = permissionService.checkPatientAccessPermission(
+                SecurityContextHelper.getCurrentUserId(),
+                SecurityContextHelper.getCurrentRole(),
+                patientId);
         if (error != null) {
             return Result.error(error);
         }
