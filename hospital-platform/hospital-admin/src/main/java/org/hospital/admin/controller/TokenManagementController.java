@@ -6,8 +6,10 @@ import org.hospital.common.model.Result;
 import org.hospital.common.security.OnlineUser;
 import org.hospital.admin.service.TokenManagementService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -22,6 +24,13 @@ public class TokenManagementController {
 
     @Autowired
     private TokenManagementService tokenManagementService;
+
+    @Value("${admin.modules:neuroimmune}")
+    private String modulesConfig;
+
+    private List<String> getModules() {
+        return Arrays.asList(modulesConfig.split(","));
+    }
 
     /**
      * 获取在线用户列表
@@ -52,8 +61,10 @@ public class TokenManagementController {
 
         long count;
         if ("all".equals(module)) {
-            count = tokenManagementService.countOnlineUsers("qmg")
-                   + tokenManagementService.countOnlineUsers("neuroimmune");
+            count = 0;
+            for (String m : getModules()) {
+                count += tokenManagementService.countOnlineUsers(m.trim());
+            }
         } else {
             count = tokenManagementService.countOnlineUsers(module);
         }
