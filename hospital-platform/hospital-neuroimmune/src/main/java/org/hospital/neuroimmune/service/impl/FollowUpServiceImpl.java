@@ -208,6 +208,12 @@ public class FollowUpServiceImpl implements FollowUpService {
     @Override
     public Map<Long, Boolean> batchGetPendingStatus(List<Long> patientIds) {
         Map<Long, Boolean> result = new HashMap<>();
+
+        // 添加null/empty检查
+        if (patientIds == null || patientIds.isEmpty()) {
+            return result;
+        }
+
         // 初始化所有患者ID为false
         for (Long patientId : patientIds) {
             result.put(patientId, false);
