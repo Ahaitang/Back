@@ -15,6 +15,15 @@ import java.time.LocalDateTime;
 @Data
 @TableName("patient_doctor_relation")
 public class PatientDoctorRelation {
+    // 状态常量（用于解绑逻辑）
+    public static final int STATUS_ACTIVE = 1;
+    public static final int STATUS_INACTIVE = 0;
+
+    // 绑定状态常量（用于审核流程）
+    public static final String BIND_STATUS_PENDING = "pending";     // 待确认
+    public static final String BIND_STATUS_CONFIRMED = "confirmed"; // 已确认
+    public static final String BIND_STATUS_REJECTED = "rejected";  // 已拒绝
+
     @TableId(type = IdType.AUTO)
     private Long id;
 
@@ -36,9 +45,10 @@ public class PatientDoctorRelation {
      */
     private Integer status;
 
-    // 状态常量
-    public static final int STATUS_ACTIVE = 1;
-    public static final int STATUS_INACTIVE = 0;
+    /**
+     * 绑定审核状态：pending-待确认, confirmed-已确认, rejected-已拒绝
+     */
+    private String bindStatus;
 
     /**
      * 绑定方式：system-系统分配, patient-患者选择, doctor-医生邀请
@@ -46,6 +56,12 @@ public class PatientDoctorRelation {
     private String bindMethod;
 
     private String remark;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime requestTime;  // 绑定请求时间
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime confirmTime;  // 确认/拒绝时间
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime bindTime;

@@ -17,6 +17,12 @@ import java.util.List;
 @Data
 @TableName("patient")
 public class Patient {
+    // 状态常量
+    public static final String STATUS_PENDING = "pending";     // 待审核
+    public static final String STATUS_ACTIVE = "active";       // 正常
+    public static final String STATUS_REJECTED = "rejected";   // 已拒绝
+    public static final String STATUS_INACTIVE = "inactive";   // 已停用
+
     @TableId(type = IdType.AUTO)
     private Long id;
     private String name;
@@ -32,6 +38,9 @@ public class Patient {
     private String password;
     private String avatar;
     private String idCard;
+
+    private String status;  // 患者状态: pending, active, rejected, inactive
+
     @TableField(exist = false)
     private Boolean hasFollowUp;  // 计算字段，从 follow_up 表统计
     private Boolean isRealAuth;
