@@ -65,6 +65,9 @@ public class PatientServiceImpl implements PatientService {
         populateDoctorNames(patients);
         // Populate diseaseTypes from patient_disease table
         populateDiseaseTypes(patients);
+        // Populate computed status fields
+        populateRealAuthStatus(patients);
+        populateFollowUpStatus(patients);
 
         return new PageResult<>(patients, result.getTotal(), request.getPageNum(), request.getPageSize());
     }
@@ -139,6 +142,36 @@ public class PatientServiceImpl implements PatientService {
     }
 
     /**
+     * 批量计算患者实名状态
+     * 根据idCard是否非空设置isRealAuth
+     */
+    private void populateRealAuthStatus(List<Patient> patients) {
+        if (patients == null || patients.isEmpty()) return;
+        patients.forEach(p -> {
+            p.setIsRealAuth(p.getIdCard() != null && !p.getIdCard().isEmpty());
+        });
+    }
+
+    /**
+     * 批量计算患者待随访状态
+     * 根据是否有ONGOING状态的随访记录设置hasFollowUp
+     */
+    private void populateFollowUpStatus(List<Patient> patients) {
+        if (patients == null || patients.isEmpty()) return;
+
+        List<Long> patientIds = patients.stream()
+                .map(Patient::getId)
+                .collect(Collectors.toList());
+
+        // 批量查询每个患者是否有进行中的随访记录
+        Map<Long, Boolean> followUpStatusMap = followUpService.batchGetPendingStatus(patientIds);
+
+        patients.forEach(p -> {
+            p.setHasFollowUp(followUpStatusMap.getOrDefault(p.getId(), false));
+        });
+    }
+
+    /**
      * 构建查询条件
      */
     private LambdaQueryWrapper<Patient> buildQueryWrapper(PageRequest request) {
@@ -186,6 +219,10 @@ public class PatientServiceImpl implements PatientService {
             // 查询患者的疾病类型列表
             List<String> diseaseTypes = patientDiseaseService.getDiseaseCodesByPatientId(id);
             patient.setDiseaseTypes(diseaseTypes);
+            // 计算实名状态
+            patient.setIsRealAuth(patient.getIdCard() != null && !patient.getIdCard().isEmpty());
+            // 计算待随访状态
+            patient.setHasFollowUp(followUpService.getPendingCountByPatientId(id) > 0);
         }
         return patient;
     }
