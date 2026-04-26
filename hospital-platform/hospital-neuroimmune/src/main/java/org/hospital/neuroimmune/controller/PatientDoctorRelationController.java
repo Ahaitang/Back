@@ -199,4 +199,82 @@ public class PatientDoctorRelationController {
         PatientDoctorRelation relation = relationService.getById(id);
         return Result.success(relation);
     }
+
+    /**
+     * 获取医生待确认的患者列表
+     */
+    @GetMapping("/doctor/{doctorId}/pending")
+    public Result<List<Map<String, Object>>> getPendingPatients(@PathVariable Long doctorId) {
+        List<PatientDoctorRelation> relations = relationService.getPendingRelationsByDoctor(doctorId);
+        return Result.success(buildPatientDetails(relations));
+    }
+
+    /**
+     * 获取医生已确认的患者列表
+     */
+    @GetMapping("/doctor/{doctorId}/confirmed")
+    public Result<List<Map<String, Object>>> getConfirmedPatients(@PathVariable Long doctorId) {
+        List<PatientDoctorRelation> relations = relationService.getConfirmedRelationsByDoctor(doctorId);
+        return Result.success(buildPatientDetails(relations));
+    }
+
+    /**
+     * 获取医生已拒绝的患者列表
+     */
+    @GetMapping("/doctor/{doctorId}/rejected")
+    public Result<List<Map<String, Object>>> getRejectedPatients(@PathVariable Long doctorId) {
+        List<PatientDoctorRelation> relations = relationService.getRejectedRelationsByDoctor(doctorId);
+        return Result.success(buildPatientDetails(relations));
+    }
+
+    /**
+     * 确认绑定关系
+     */
+    @PutMapping("/{id}/confirm")
+    public Result<Void> confirmRelation(@PathVariable Long id) {
+        boolean success = relationService.confirmRelation(id);
+        if (success) {
+            return Result.success(null, "绑定已确认");
+        }
+        return Result.error(400, "确认失败，关系不存在或已处理");
+    }
+
+    /**
+     * 拒绝绑定关系
+     */
+    @PutMapping("/{id}/reject")
+    public Result<Void> rejectRelation(@PathVariable Long id) {
+        boolean success = relationService.rejectRelation(id);
+        if (success) {
+            return Result.success(null, "绑定已拒绝");
+        }
+        return Result.error(400, "拒绝失败，关系不存在或已处理");
+    }
+
+    /**
+     * 构建患者详情列表（辅助方法）
+     */
+    private List<Map<String, Object>> buildPatientDetails(List<PatientDoctorRelation> relations) {
+        return relations.stream().map(relation -> {
+            Map<String, Object> item = new HashMap<>();
+            item.put("relationId", relation.getId());
+            item.put("patientId", relation.getPatientId());
+            item.put("requestTime", relation.getRequestTime());
+
+            Patient patient = patientService.getById(relation.getPatientId());
+            if (patient != null) {
+                item.put("name", patient.getName());
+                item.put("gender", patient.getGender());
+                item.put("age", patient.getAge());
+                item.put("phone", patient.getPhone());
+            }
+
+            Doctor doctor = doctorService.getById(relation.getDoctorId());
+            if (doctor != null) {
+                item.put("doctorName", doctor.getName());
+            }
+
+            return item;
+        }).collect(Collectors.toList());
+    }
 }

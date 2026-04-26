@@ -8,6 +8,8 @@ import org.hospital.common.model.PasswordRequest;
 import org.hospital.common.security.TokenStorage;
 import org.hospital.common.security.UserInfo;
 import org.hospital.neuroimmune.model.LoginResult;
+import org.hospital.neuroimmune.model.RegisterRequest;
+import org.hospital.neuroimmune.model.RegisterResult;
 import org.hospital.neuroimmune.service.AuthService;
 import org.hospital.neuroimmune.service.PatientService;
 import org.hospital.neuroimmune.service.DoctorService;
@@ -17,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -92,5 +95,33 @@ public class AuthController {
     public Result<Void> updateDoctorPassword(@PathVariable Long id, @RequestBody PasswordRequest request) {
         authService.updatePasswordAndRemoveToken(id, "doctor", request.getPassword());
         return Result.success();
+    }
+
+    /**
+     * 患者注册接口
+     */
+    @PostMapping("/register")
+    public Result<Map<String, Object>> register(@Valid @RequestBody RegisterRequest request) {
+        logger.info("注册请求: phone={}, doctorId={}", request.getPhone(), request.getDoctorId());
+
+        RegisterResult result = authService.register(request);
+        if (result.isSuccess()) {
+            Map<String, Object> data = new HashMap<>();
+            data.put("patientId", result.getPatientId());
+            data.put("status", result.getStatus());
+            return Result.success(data, "注册成功，等待医生确认");
+        }
+        return Result.error(400, result.getErrorMessage());
+    }
+
+    /**
+     * 检查手机号是否已注册
+     */
+    @GetMapping("/register/check-phone")
+    public Result<Map<String, Object>> checkPhone(@RequestParam String phone) {
+        boolean exists = authService.checkPhoneExists(phone);
+        Map<String, Object> data = new HashMap<>();
+        data.put("exists", exists);
+        return Result.success(data);
     }
 }
