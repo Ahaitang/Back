@@ -6,7 +6,9 @@ import org.hospital.neuroimmune.service.PatientService;
 import org.hospital.neuroimmune.service.DoctorService;
 import org.hospital.neuroimmune.service.FollowUpService;
 import org.hospital.neuroimmune.service.MedicationService;
+import org.hospital.neuroimmune.service.MedicalRecordService;
 import org.hospital.neuroimmune.service.PermissionService;
+import org.hospital.neuroimmune.service.DiseaseEpisodeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -32,7 +34,13 @@ public class DashboardServiceImpl implements DashboardService {
     private MedicationService medicationService;
 
     @Autowired
+    private MedicalRecordService medicalRecordService;
+
+    @Autowired
     private PermissionService permissionService;
+
+    @Autowired
+    private DiseaseEpisodeService diseaseEpisodeService;
 
     @Override
     public Map<String, Object> getAdminStats() {
@@ -42,7 +50,8 @@ public class DashboardServiceImpl implements DashboardService {
 
         stats.put("totalPatients", patientService.getList(request).getTotal());
         stats.put("totalDoctors", doctorService.getDoctorList(request).getTotal());
-        stats.put("pendingFollowUps", followUpService.getList(request).getTotal());
+        stats.put("pendingFollowUps", followUpService.getPendingCount());
+        stats.put("completedFollowUps", followUpService.getCompletedCount());
         stats.put("totalMedications", medicationService.getList(request).getTotal());
 
         return stats;
@@ -59,8 +68,11 @@ public class DashboardServiceImpl implements DashboardService {
         PageRequest doctorRequest = new PageRequest();
         doctorRequest.setPageSize(1);
         doctorRequest.setDoctorId(doctorId);
-        stats.put("pendingFollowUps", followUpService.getList(doctorRequest).getTotal());
+        stats.put("pendingFollowUps", followUpService.getPendingCountByDoctorId(doctorId));
+        stats.put("completedFollowUps", followUpService.getCompletedCountByDoctorId(doctorId));
         stats.put("totalMedications", medicationService.getList(doctorRequest).getTotal());
+        stats.put("totalMedicalRecords", medicalRecordService.countByDoctorId(doctorId));
+        stats.put("totalEpisodes", diseaseEpisodeService.countByDoctorId(doctorId));
 
         return stats;
     }
@@ -72,7 +84,7 @@ public class DashboardServiceImpl implements DashboardService {
         request.setPageSize(1);
         request.setPatientId(patientId);
 
-        stats.put("visitCount", followUpService.getList(request).getTotal());
+        stats.put("visitCount", medicalRecordService.countByPatientId(patientId));
         stats.put("adviceCount", medicationService.getList(request).getTotal());
         stats.put("pendingFollowUps", followUpService.getList(request).getTotal());
 

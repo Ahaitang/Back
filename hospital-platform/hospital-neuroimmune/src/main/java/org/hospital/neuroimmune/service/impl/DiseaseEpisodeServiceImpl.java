@@ -32,8 +32,8 @@ public class DiseaseEpisodeServiceImpl implements DiseaseEpisodeService {
         Page<DiseaseEpisode> page = new Page<>(request.getPageNum(), request.getPageSize());
 
         LambdaQueryWrapper<DiseaseEpisode> wrapper = new LambdaQueryWrapper<>();
-        // 只查询有效数据
-        wrapper.eq(DiseaseEpisode::getIsDeleted, 0).or().isNull(DiseaseEpisode::getIsDeleted);
+        // 只查询有效数据（未删除的记录）
+        wrapper.and(w -> w.eq(DiseaseEpisode::getIsDeleted, 0).or().isNull(DiseaseEpisode::getIsDeleted));
         if (request.getPatientId() != null) {
             wrapper.eq(DiseaseEpisode::getPatientId, request.getPatientId());
         }
@@ -71,13 +71,24 @@ public class DiseaseEpisodeServiceImpl implements DiseaseEpisodeService {
         LambdaQueryWrapper<DiseaseEpisode> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(DiseaseEpisode::getPatientId, patientId);
         wrapper.eq(DiseaseEpisode::getIsDeleted, 0).or().isNull(DiseaseEpisode::getIsDeleted);
-        Long count = diseaseEpisodeMapper.selectCount(wrapper);
-        return count != null ? count.intValue() : 0;
+        Object count = diseaseEpisodeMapper.selectCount(wrapper);
+        return count != null ? Integer.valueOf(count.toString()) : 0;
+    }
+
+    @Override
+    public Integer countByDoctorId(Long doctorId) {
+        // 通过医生ID统计其所有患者的发作记录数量
+        return diseaseEpisodeMapper.countByDoctorId(doctorId);
     }
 
     @Override
     public void save(DiseaseEpisode episode) {
         if (episode.getId() == null) {
+            // 新增时自动计算发作次数
+            if (episode.getEpisodeNumber() == null && episode.getPatientId() != null) {
+                Integer count = countByPatientId(episode.getPatientId());
+                episode.setEpisodeNumber(count + 1);
+            }
             diseaseEpisodeMapper.insert(episode);
         } else {
             diseaseEpisodeMapper.updateById(episode);

@@ -15,4 +15,10 @@ public interface DiseaseEpisodeMapper extends BaseMapper<DiseaseEpisode> {
 
     @Select("SELECT COUNT(*) FROM disease_episode WHERE patient_id = #{patientId}")
     Integer countByPatientId(@Param("patientId") Long patientId);
+
+    @Select("SELECT COUNT(e.id) FROM disease_episode e " +
+            "INNER JOIN doctor_patient_relation r ON e.patient_id = r.patient_id " +
+            "WHERE r.doctor_id = #{doctorId} AND r.is_valid = 1 " +
+            "AND (e.is_deleted = 0 OR e.is_deleted IS NULL)")
+    Integer countByDoctorId(@Param("doctorId") Long doctorId);
 }

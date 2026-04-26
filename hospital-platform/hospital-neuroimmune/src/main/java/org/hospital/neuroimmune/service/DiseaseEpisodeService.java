@@ -19,6 +19,8 @@ public interface DiseaseEpisodeService {
 
     Integer countByPatientId(Long patientId);
 
+    Integer countByDoctorId(Long doctorId);
+
     /**
      * 逻辑删除患者的所有发作记录（患者删除时调用）
      */
