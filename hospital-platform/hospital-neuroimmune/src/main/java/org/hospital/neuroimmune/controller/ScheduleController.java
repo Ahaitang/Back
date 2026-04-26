@@ -1,9 +1,11 @@
 package org.hospital.neuroimmune.controller;
 
 import org.hospital.common.model.Result;
+import org.hospital.common.security.UserInfo;
 import org.hospital.neuroimmune.dto.ScheduleDTO;
 import org.hospital.neuroimmune.service.ScheduleService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -18,21 +20,18 @@ public class ScheduleController {
      * 根据日期获取日程
      */
     @GetMapping("/date")
-    public Result<ScheduleDTO> getByDate(
-            @RequestParam String date,
-            @RequestHeader(value = "X-User-Role", required = false) String role,
-            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
-        return Result.success(scheduleService.getScheduleByDate(date, role, userId));
+    public Result<ScheduleDTO> getByDate(@RequestParam String date) {
+        UserInfo userInfo = getCurrentUser();
+        return Result.success(scheduleService.getScheduleByDate(date, userInfo.getRole(), userInfo.getUserId()));
     }
 
     /**
      * 获取今日日程
      */
     @GetMapping("/today")
-    public Result<ScheduleDTO> getToday(
-            @RequestHeader(value = "X-User-Role", required = false) String role,
-            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
-        return Result.success(scheduleService.getTodaySchedule(role, userId));
+    public Result<ScheduleDTO> getToday() {
+        UserInfo userInfo = getCurrentUser();
+        return Result.success(scheduleService.getTodaySchedule(userInfo.getRole(), userInfo.getUserId()));
     }
 
     /**
@@ -41,9 +40,12 @@ public class ScheduleController {
     @GetMapping("/range")
     public Result<ScheduleDTO> getByRange(
             @RequestParam String startDate,
-            @RequestParam String endDate,
-            @RequestHeader(value = "X-User-Role", required = false) String role,
-            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
-        return Result.success(scheduleService.getScheduleByRange(startDate, endDate, role, userId));
+            @RequestParam String endDate) {
+        UserInfo userInfo = getCurrentUser();
+        return Result.success(scheduleService.getScheduleByRange(startDate, endDate, userInfo.getRole(), userInfo.getUserId()));
+    }
+
+    private UserInfo getCurrentUser() {
+        return (UserInfo) SecurityContextHolder.getContext().getAuthentication().getDetails();
     }
 }

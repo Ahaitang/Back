@@ -157,14 +157,16 @@ public class MedicationServiceImpl implements MedicationService {
     public Long countByDoctorId(Long doctorId) {
         LambdaQueryWrapper<Medication> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Medication::getDoctorId, doctorId);
-        return medicationMapper.selectCount(wrapper);
+        Object count = medicationMapper.selectCount(wrapper);
+        return count != null ? Long.valueOf(count.toString()) : 0L;
     }
 
     @Override
     public Long countByPatientId(Long patientId) {
         LambdaQueryWrapper<Medication> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Medication::getPatientId, patientId);
-        return medicationMapper.selectCount(wrapper);
+        Object count = medicationMapper.selectCount(wrapper);
+        return count != null ? Long.valueOf(count.toString()) : 0L;
     }
 
     @Override

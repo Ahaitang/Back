@@ -3,11 +3,13 @@ package org.hospital.neuroimmune.controller;
 import org.hospital.common.model.Result;
 import org.hospital.common.model.PageRequest;
 import org.hospital.common.model.PageResult;
+import org.hospital.common.security.UserInfo;
 import org.hospital.neuroimmune.entity.Doctor;
 import org.hospital.neuroimmune.service.DoctorService;
 import org.hospital.neuroimmune.service.DoctorRoleService;
 import org.hospital.neuroimmune.service.PermissionService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -93,13 +95,13 @@ public class NeuroimmuneDoctorController {
      */
     @PutMapping("/{id}/roles")
     public Result<Void> updateRoles(@PathVariable Long id,
-                                    @RequestBody RoleUpdateRequest request,
-                                    @RequestHeader(value = "X-User-Id", required = false) Long currentUserId) {
+                                    @RequestBody RoleUpdateRequest request) {
         List<String> roleCodes = request.getRoles();
         Integer level = request.getLevel();
 
+        UserInfo userInfo = getCurrentUser();
         // 使用 PermissionService 检查权限
-        String error = permissionService.checkRoleUpdatePermission(currentUserId, id, roleCodes);
+        String error = permissionService.checkRoleUpdatePermission(userInfo.getUserId(), id, roleCodes);
         if (error != null) {
             return Result.error(error);
         }
@@ -127,5 +129,9 @@ public class NeuroimmuneDoctorController {
         // 逻辑删除，会自动解绑患者关系
         doctorService.delete(id);
         return Result.success();
+    }
+
+    private UserInfo getCurrentUser() {
+        return (UserInfo) SecurityContextHolder.getContext().getAuthentication().getDetails();
     }
 }

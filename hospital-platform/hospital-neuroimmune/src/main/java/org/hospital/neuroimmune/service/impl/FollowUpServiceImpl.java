@@ -131,8 +131,8 @@ public class FollowUpServiceImpl implements FollowUpService {
     public Long getPendingCount() {
         LambdaQueryWrapper<FollowUp> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(FollowUp::getStatus, RecordStatus.ONGOING.getCode());
-        Long count = followUpMapper.selectCount(wrapper);
-        return count != null ? count : 0L;
+        Object count = followUpMapper.selectCount(wrapper);
+        return count != null ? Long.valueOf(count.toString()) : 0L;
     }
 
     @Override
@@ -141,8 +141,8 @@ public class FollowUpServiceImpl implements FollowUpService {
         LambdaQueryWrapper<FollowUp> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(FollowUp::getDoctorId, doctorId)
                .eq(FollowUp::getStatus, RecordStatus.ONGOING.getCode());
-        Long count = followUpMapper.selectCount(wrapper);
-        return count != null ? count : 0L;
+        Object count = followUpMapper.selectCount(wrapper);
+        return count != null ? Long.valueOf(count.toString()) : 0L;
     }
 
     @Override
@@ -161,16 +161,35 @@ public class FollowUpServiceImpl implements FollowUpService {
         LambdaQueryWrapper<FollowUp> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(FollowUp::getPatientId, patientId)
                .eq(FollowUp::getStatus, RecordStatus.ONGOING.getCode());
-        Long count = followUpMapper.selectCount(wrapper);
-        return count != null ? count : 0L;
+        Object count = followUpMapper.selectCount(wrapper);
+        return count != null ? Long.valueOf(count.toString()) : 0L;
+    }
+
+    @Override
+    @Cacheable(value = "neuro-stats", key = "'followup:completed'")
+    public Long getCompletedCount() {
+        LambdaQueryWrapper<FollowUp> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(FollowUp::getStatus, RecordStatus.COMPLETED.getCode());
+        Object count = followUpMapper.selectCount(wrapper);
+        return count != null ? Long.valueOf(count.toString()) : 0L;
+    }
+
+    @Override
+    @Cacheable(value = "neuro-stats", key = "'followup:completed:doctor:' + #doctorId")
+    public Long getCompletedCountByDoctorId(Long doctorId) {
+        LambdaQueryWrapper<FollowUp> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(FollowUp::getDoctorId, doctorId)
+               .eq(FollowUp::getStatus, RecordStatus.COMPLETED.getCode());
+        Object count = followUpMapper.selectCount(wrapper);
+        return count != null ? Long.valueOf(count.toString()) : 0L;
     }
 
     @Override
     public Long countByPatientId(Long patientId) {
         LambdaQueryWrapper<FollowUp> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(FollowUp::getPatientId, patientId);
-        Long count = followUpMapper.selectCount(wrapper);
-        return count != null ? count : 0L;
+        Object count = followUpMapper.selectCount(wrapper);
+        return count != null ? Long.valueOf(count.toString()) : 0L;
     }
 
     @Override

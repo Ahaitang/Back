@@ -63,6 +63,8 @@ public class PatientServiceImpl implements PatientService {
 
         // Populate doctorName from relation table
         populateDoctorNames(patients);
+        // Populate diseaseTypes from patient_disease table
+        populateDiseaseTypes(patients);
 
         return new PageResult<>(patients, result.getTotal(), request.getPageNum(), request.getPageSize());
     }
@@ -125,6 +127,18 @@ public class PatientServiceImpl implements PatientService {
     }
 
     /**
+     * Populate diseaseTypes for patients from patient_disease table
+     */
+    private void populateDiseaseTypes(List<Patient> patients) {
+        if (patients == null || patients.isEmpty()) return;
+
+        patients.forEach(p -> {
+            List<String> diseaseTypes = patientDiseaseService.getDiseaseCodesByPatientId(p.getId());
+            p.setDiseaseTypes(diseaseTypes);
+        });
+    }
+
+    /**
      * 构建查询条件
      */
     private LambdaQueryWrapper<Patient> buildQueryWrapper(PageRequest request) {
@@ -169,6 +183,9 @@ public class PatientServiceImpl implements PatientService {
                 patient.setDoctorId(relation.getDoctorId());
                 patient.setDoctorName(relation.getDoctorName());
             }
+            // 查询患者的疾病类型列表
+            List<String> diseaseTypes = patientDiseaseService.getDiseaseCodesByPatientId(id);
+            patient.setDiseaseTypes(diseaseTypes);
         }
         return patient;
     }
@@ -186,6 +203,7 @@ public class PatientServiceImpl implements PatientService {
 
     @Override
     @CacheEvict(value = "neuro-patient", key = "#patient.id", condition = "#patient.id != null")
+    @Transactional
     public void save(Patient patient) {
         // 清除时间字段，让数据库自动处理
         patient.setCreateTime(null);
@@ -210,6 +228,11 @@ public class PatientServiceImpl implements PatientService {
             patientMapper.insert(patient);
         } else {
             patientMapper.updateById(patient);
+        }
+
+        // 同步疾病类型到 patient_disease 表
+        if (patient.getDiseaseTypes() != null && patient.getId() != null) {
+            patientDiseaseService.setDiseasesForPatient(patient.getId(), patient.getDiseaseTypes());
         }
     }
 

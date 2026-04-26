@@ -27,6 +27,7 @@ public class PageRequest {
     private String department;
     private String startDate;
     private String endDate;
+    private Long relatedEpisodeId;  // 关联的发作记录ID
 
     /**
      * 计算偏移量，用于 MySQL 分页

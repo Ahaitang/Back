@@ -45,7 +45,8 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
         Page<MedicalRecord> page = new Page<>(request.getPageNum(), request.getPageSize());
 
         LambdaQueryWrapper<MedicalRecord> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(MedicalRecord::getDoctorId, doctorId);
+        // 通过 patient_doctor_relation 关联查询医生管理的患者的病历
+        wrapper.apply("patient_id IN (SELECT patient_id FROM patient_doctor_relation WHERE doctor_id = {0} AND status = 1)", doctorId);
 
         if (request.getKeyword() != null && !request.getKeyword().isEmpty()) {
             String keyword = request.getKeyword();
@@ -98,6 +99,9 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
         if (request.getEndDate() != null && !request.getEndDate().isEmpty()) {
             wrapper.le(MedicalRecord::getDate, request.getEndDate());
         }
+        if (request.getRelatedEpisodeId() != null) {
+            wrapper.eq(MedicalRecord::getRelatedEpisodeId, request.getRelatedEpisodeId());
+        }
 
         return wrapper;
     }
@@ -148,7 +152,16 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
     public Long countByPatientId(Long patientId) {
         LambdaQueryWrapper<MedicalRecord> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(MedicalRecord::getPatientId, patientId);
-        return medicalRecordMapper.selectCount(wrapper);
+        Object count = medicalRecordMapper.selectCount(wrapper);
+        return count != null ? Long.valueOf(count.toString()) : 0L;
+    }
+
+    @Override
+    public Long countByDoctorId(Long doctorId) {
+        LambdaQueryWrapper<MedicalRecord> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(MedicalRecord::getDoctorId, doctorId);
+        Object count = medicalRecordMapper.selectCount(wrapper);
+        return count != null ? Long.valueOf(count.toString()) : 0L;
     }
 
     @Override

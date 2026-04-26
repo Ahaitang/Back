@@ -4,8 +4,12 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.hospital.neuroimmune.dto.ScheduleDTO;
 import org.hospital.neuroimmune.entity.FollowUp;
 import org.hospital.neuroimmune.entity.Medication;
+import org.hospital.neuroimmune.mapper.NeuroimmuneDoctorMapper;
+import org.hospital.neuroimmune.mapper.NeuroimmunePatientMapper;
 import org.hospital.neuroimmune.mapper.FollowUpMapper;
 import org.hospital.neuroimmune.mapper.MedicationMapper;
+import org.hospital.neuroimmune.entity.Doctor;
+import org.hospital.neuroimmune.entity.Patient;
 import org.hospital.neuroimmune.service.ScheduleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -14,7 +18,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,6 +32,12 @@ public class ScheduleServiceImpl implements ScheduleService {
 
     @Autowired
     private MedicationMapper medicationMapper;
+
+    @Autowired
+    private NeuroimmuneDoctorMapper doctorMapper;
+
+    @Autowired
+    private NeuroimmunePatientMapper patientMapper;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -38,6 +51,10 @@ public class ScheduleServiceImpl implements ScheduleService {
 
         // 查询随访计划
         List<FollowUp> followUps = getFollowUpsByDate(date, role, userId);
+
+        // 批量获取医生和患者信息
+        fillFollowUpNames(followUps);
+
         for (FollowUp fu : followUps) {
             ScheduleDTO.ScheduleItem item = new ScheduleDTO.ScheduleItem();
             item.setId(fu.getId());
@@ -52,6 +69,10 @@ public class ScheduleServiceImpl implements ScheduleService {
 
         // 查询用药建议
         List<Medication> medications = getMedicationsByDate(date, role, userId);
+
+        // 批量获取医生和患者信息
+        fillMedicationNames(medications);
+
         for (Medication med : medications) {
             ScheduleDTO.ScheduleItem item = new ScheduleDTO.ScheduleItem();
             item.setId(med.getId());
@@ -72,6 +93,92 @@ public class ScheduleServiceImpl implements ScheduleService {
         }
 
         return schedule;
+    }
+
+    /**
+     * 批量填充随访记录的医生和患者名称
+     */
+    private void fillFollowUpNames(List<FollowUp> followUps) {
+        if (followUps == null || followUps.isEmpty()) return;
+
+        // 收集所有 doctorId 和 patientId
+        Set<Long> doctorIds = followUps.stream()
+                .map(FollowUp::getDoctorId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+        Set<Long> patientIds = followUps.stream()
+                .map(FollowUp::getPatientId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+
+        // 批量查询医生
+        Map<Long, String> doctorNameMap = new HashMap<>();
+        if (!doctorIds.isEmpty()) {
+            List<Doctor> doctors = doctorMapper.selectBatchIds(doctorIds);
+            doctorNameMap = doctors.stream()
+                    .collect(Collectors.toMap(Doctor::getId, Doctor::getName, (a, b) -> a));
+        }
+
+        // 批量查询患者
+        Map<Long, String> patientNameMap = new HashMap<>();
+        if (!patientIds.isEmpty()) {
+            List<Patient> patients = patientMapper.selectBatchIds(patientIds);
+            patientNameMap = patients.stream()
+                    .collect(Collectors.toMap(Patient::getId, Patient::getName, (a, b) -> a));
+        }
+
+        // 填充名称
+        for (FollowUp fu : followUps) {
+            if (fu.getDoctorId() != null) {
+                fu.setDoctorName(doctorNameMap.getOrDefault(fu.getDoctorId(), "医生"));
+            }
+            if (fu.getPatientId() != null) {
+                fu.setPatientName(patientNameMap.getOrDefault(fu.getPatientId(), "患者"));
+            }
+        }
+    }
+
+    /**
+     * 批量填充用药记录的医生和患者名称
+     */
+    private void fillMedicationNames(List<Medication> medications) {
+        if (medications == null || medications.isEmpty()) return;
+
+        // 收集所有 doctorId 和 patientId
+        Set<Long> doctorIds = medications.stream()
+                .map(Medication::getDoctorId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+        Set<Long> patientIds = medications.stream()
+                .map(Medication::getPatientId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+
+        // 批量查询医生
+        Map<Long, String> doctorNameMap = new HashMap<>();
+        if (!doctorIds.isEmpty()) {
+            List<Doctor> doctors = doctorMapper.selectBatchIds(doctorIds);
+            doctorNameMap = doctors.stream()
+                    .collect(Collectors.toMap(Doctor::getId, Doctor::getName, (a, b) -> a));
+        }
+
+        // 批量查询患者
+        Map<Long, String> patientNameMap = new HashMap<>();
+        if (!patientIds.isEmpty()) {
+            List<Patient> patients = patientMapper.selectBatchIds(patientIds);
+            patientNameMap = patients.stream()
+                    .collect(Collectors.toMap(Patient::getId, Patient::getName, (a, b) -> a));
+        }
+
+        // 填充名称
+        for (Medication med : medications) {
+            if (med.getDoctorId() != null) {
+                med.setDoctorName(doctorNameMap.getOrDefault(med.getDoctorId(), "医生"));
+            }
+            if (med.getPatientId() != null) {
+                med.setPatientName(patientNameMap.getOrDefault(med.getPatientId(), "患者"));
+            }
+        }
     }
 
     @Override

@@ -24,9 +24,10 @@ public class RedisConfig {
 
     @Bean
     public RedisCacheManager cacheManager(RedisConnectionFactory factory) {
-        // 配置 ObjectMapper 保留数值类型信息
+        // 配置 ObjectMapper 保留所有类型信息（包括 Long 等 final 类型）
+        // 解决 Jackson 反序列化时将 Long 反序列化为 Integer 的类型丢失问题
         ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.activateDefaultTyping(LaissezFaireSubTypeValidator.instance, ObjectMapper.DefaultTyping.NON_FINAL);
+        objectMapper.activateDefaultTyping(LaissezFaireSubTypeValidator.instance, ObjectMapper.DefaultTyping.EVERYTHING);
         objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         objectMapper.registerModule(new JavaTimeModule());
 

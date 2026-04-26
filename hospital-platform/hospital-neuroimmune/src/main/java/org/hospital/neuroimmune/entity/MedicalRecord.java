@@ -40,6 +40,11 @@ public class MedicalRecord extends BaseRecordEntity {
     private String attachments;
     private String notes;       // 备注
 
+    private Long relatedEpisodeId;   // 关联的发作记录ID
+
+    @TableField(exist = false)
+    private Integer relatedEpisodeNumber; // 关联的发作次数（第几次）
+
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;
 

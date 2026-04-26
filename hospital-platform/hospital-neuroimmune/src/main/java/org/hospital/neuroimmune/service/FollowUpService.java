@@ -15,6 +15,8 @@ public interface FollowUpService {
     Long getPendingCount();
     Long getPendingCountByDoctorId(Long doctorId);
     Long getPendingCountByPatientId(Long patientId);
+    Long getCompletedCount();
+    Long getCompletedCountByDoctorId(Long doctorId);
     List<FollowUp> getPendingByDoctorId(Long doctorId);
     Long countByPatientId(Long patientId);
 

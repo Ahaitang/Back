@@ -3,9 +3,11 @@ package org.hospital.neuroimmune.controller;
 import org.hospital.common.model.Result;
 import org.hospital.common.model.PageRequest;
 import org.hospital.common.model.PageResult;
+import org.hospital.common.security.UserInfo;
 import org.hospital.neuroimmune.entity.DiseaseEpisode;
 import org.hospital.neuroimmune.service.DiseaseEpisodeService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,19 +22,17 @@ public class DiseaseEpisodeController {
 
     /**
      * 获取发作记录列表
+     * 支持参数：
+     * - patientId: 按患者筛选
+     * - keyword: 关键词搜索（主诉/诊断）
      */
     @GetMapping
-    public Result<PageResult<DiseaseEpisode>> list(
-            PageRequest request,
-            @RequestParam(required = false) Long patientId,
-            @RequestHeader(value = "X-User-Role", required = false) String role,
-            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+    public Result<PageResult<DiseaseEpisode>> list(@ModelAttribute PageRequest request) {
 
+        UserInfo userInfo = getCurrentUser();
         // 患者只能查看自己的发作记录
-        if ("patient".equals(role) && userId != null) {
-            request.setPatientId(userId);
-        } else if (patientId != null) {
-            request.setPatientId(patientId);
+        if ("patient".equals(userInfo.getRole())) {
+            request.setPatientId(userInfo.getUserId());
         }
 
         return Result.success(diseaseEpisodeService.getList(request));
@@ -58,15 +58,14 @@ public class DiseaseEpisodeController {
      * 新增/更新发作记录
      */
     @PostMapping
-    public Result<Void> save(@RequestBody DiseaseEpisode episode,
-                              @RequestHeader(value = "X-User-Role", required = false) String role,
-                              @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+    public Result<Long> save(@RequestBody DiseaseEpisode episode) {
+        UserInfo userInfo = getCurrentUser();
         // 患者只能添加自己的发作记录
-        if ("patient".equals(role) && userId != null) {
-            episode.setPatientId(userId);
+        if ("patient".equals(userInfo.getRole())) {
+            episode.setPatientId(userInfo.getUserId());
         }
         diseaseEpisodeService.save(episode);
-        return Result.success();
+        return Result.success(episode.getId());
     }
 
     /**
@@ -94,5 +93,9 @@ public class DiseaseEpisodeController {
     @GetMapping("/count/{patientId}")
     public Result<Integer> countByPatient(@PathVariable Long patientId) {
         return Result.success(diseaseEpisodeService.countByPatientId(patientId));
+    }
+
+    private UserInfo getCurrentUser() {
+        return (UserInfo) SecurityContextHolder.getContext().getAuthentication().getDetails();
     }
 }

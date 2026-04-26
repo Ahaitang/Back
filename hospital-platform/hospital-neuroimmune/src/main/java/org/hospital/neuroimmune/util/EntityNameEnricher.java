@@ -5,7 +5,9 @@ import org.hospital.neuroimmune.entity.MedicalRecord;
 import org.hospital.neuroimmune.entity.Medication;
 import org.hospital.neuroimmune.entity.Patient;
 import org.hospital.neuroimmune.entity.Doctor;
+import org.hospital.neuroimmune.entity.DiseaseEpisode;
 import org.hospital.neuroimmune.service.EntityQueryService;
+import org.hospital.neuroimmune.service.DiseaseEpisodeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -23,6 +25,9 @@ public class EntityNameEnricher {
 
     @Autowired
     private EntityQueryService entityQueryService;
+
+    @Autowired
+    private DiseaseEpisodeService diseaseEpisodeService;
 
     /**
      * 填充随访记录的名称
@@ -86,6 +91,13 @@ public class EntityNameEnricher {
             if (r.getDoctorId() != null) {
                 Doctor d = doctorMap.get(r.getDoctorId());
                 if (d != null) r.setDoctorName(d.getName());
+            }
+            // 填充关联发作次数
+            if (r.getRelatedEpisodeId() != null) {
+                DiseaseEpisode episode = diseaseEpisodeService.getById(r.getRelatedEpisodeId());
+                if (episode != null) {
+                    r.setRelatedEpisodeNumber(episode.getEpisodeNumber());
+                }
             }
         });
     }
@@ -152,6 +164,13 @@ public class EntityNameEnricher {
         if (record.getDoctorId() != null) {
             Doctor d = entityQueryService.getDoctor(record.getDoctorId());
             if (d != null) record.setDoctorName(d.getName());
+        }
+        // 填充关联发作次数
+        if (record.getRelatedEpisodeId() != null) {
+            DiseaseEpisode episode = diseaseEpisodeService.getById(record.getRelatedEpisodeId());
+            if (episode != null) {
+                record.setRelatedEpisodeNumber(episode.getEpisodeNumber());
+            }
         }
     }
 }

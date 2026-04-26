@@ -1,6 +1,7 @@
 package org.hospital.neuroimmune.controller;
 
 import org.hospital.common.model.Result;
+import org.hospital.common.security.SecurityContextHelper;
 import org.hospital.neuroimmune.service.DashboardService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -20,9 +21,9 @@ public class DashboardController {
     private DashboardService dashboardService;
 
     @GetMapping("/stats")
-    public Result<Map<String, Object>> stats(
-            @RequestHeader(value = "X-User-Role", required = false) String role,
-            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+    public Result<Map<String, Object>> stats() {
+        Long userId = SecurityContextHelper.getCurrentUserId();
+        String role = SecurityContextHelper.getCurrentRole();
         Map<String, Object> stats = dashboardService.getStatsByRole(userId, role);
         return Result.success(stats);
     }
