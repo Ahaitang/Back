@@ -105,6 +105,11 @@ public class PatientServiceImpl implements PatientService {
             }
         });
 
+        // Populate computed status fields
+        populateDiseaseTypes(patients);
+        populateRealAuthStatus(patients);
+        populateFollowUpStatus(patients);
+
         return new PageResult<>(patients, result.getTotal(), request.getPageNum(), request.getPageSize());
     }
 
