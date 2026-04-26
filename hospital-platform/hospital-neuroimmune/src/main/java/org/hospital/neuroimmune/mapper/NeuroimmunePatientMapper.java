@@ -10,7 +10,7 @@ import org.hospital.neuroimmune.entity.Patient;
 @Mapper
 public interface NeuroimmunePatientMapper extends BaseMapper<Patient> {
 
-    @Select("SELECT id, name, gender, birth_date, phone, password, avatar, id_card, is_real_auth, create_time, update_time, is_deleted FROM patient WHERE phone = #{phone}")
+    @Select("SELECT id, name, gender, birth_date, phone, password, avatar, id_card, is_real_auth, status, create_time, update_time, is_deleted FROM patient WHERE phone = #{phone}")
     Patient selectByPhone(@Param("phone") String phone);
 
     /**

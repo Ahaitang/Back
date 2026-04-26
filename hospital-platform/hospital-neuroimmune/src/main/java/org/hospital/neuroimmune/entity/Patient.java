@@ -43,7 +43,9 @@ public class Patient {
 
     @TableField(exist = false)
     private Boolean hasFollowUp;  // 计算字段，从 follow_up 表统计
-    private Boolean isRealAuth;
+
+    @TableField(exist = false)
+    private Boolean isRealAuth;  // 计算字段，根据idCard是否非空判断
 
     @TableField(exist = false)
     private Long doctorId;  // 非持久化字段，通过 patient_doctor_relation 查询获取
