@@ -89,4 +89,34 @@ public interface PatientDoctorRelationService {
      * 批量统计医生的患者数量
      */
     Map<Long, Long> countByDoctorIds(List<Long> doctorIds);
+
+    /**
+     * 创建待确认的绑定关系
+     */
+    void createPendingRelation(PatientDoctorRelation relation);
+
+    /**
+     * 获取医生的待确认患者列表
+     */
+    List<PatientDoctorRelation> getPendingRelationsByDoctor(Long doctorId);
+
+    /**
+     * 获取医生的已确认患者列表
+     */
+    List<PatientDoctorRelation> getConfirmedRelationsByDoctor(Long doctorId);
+
+    /**
+     * 获取医生的已拒绝患者列表
+     */
+    List<PatientDoctorRelation> getRejectedRelationsByDoctor(Long doctorId);
+
+    /**
+     * 确认绑定关系
+     */
+    boolean confirmRelation(Long relationId);
+
+    /**
+     * 拒绝绑定关系
+     */
+    boolean rejectRelation(Long relationId);
 }

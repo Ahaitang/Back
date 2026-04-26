@@ -185,4 +185,63 @@ public class PatientDoctorRelationServiceImpl implements PatientDoctorRelationSe
         }
         return countMap;
     }
+
+    @Override
+    @Transactional
+    public void createPendingRelation(PatientDoctorRelation relation) {
+        relationMapper.insert(relation);
+    }
+
+    @Override
+    public List<PatientDoctorRelation> getPendingRelationsByDoctor(Long doctorId) {
+        return relationMapper.selectByDoctorIdAndBindStatus(doctorId, PatientDoctorRelation.BIND_STATUS_PENDING);
+    }
+
+    @Override
+    public List<PatientDoctorRelation> getConfirmedRelationsByDoctor(Long doctorId) {
+        return relationMapper.selectByDoctorIdAndBindStatus(doctorId, PatientDoctorRelation.BIND_STATUS_CONFIRMED);
+    }
+
+    @Override
+    public List<PatientDoctorRelation> getRejectedRelationsByDoctor(Long doctorId) {
+        return relationMapper.selectByDoctorIdAndBindStatus(doctorId, PatientDoctorRelation.BIND_STATUS_REJECTED);
+    }
+
+    @Override
+    @Transactional
+    public boolean confirmRelation(Long relationId) {
+        PatientDoctorRelation relation = relationMapper.selectById(relationId);
+        if (relation == null || !PatientDoctorRelation.BIND_STATUS_PENDING.equals(relation.getBindStatus())) {
+            return false;
+        }
+
+        // 更新绑定状态
+        relation.setBindStatus(PatientDoctorRelation.BIND_STATUS_CONFIRMED);
+        relation.setConfirmTime(LocalDateTime.now());
+        relationMapper.updateById(relation);
+
+        // 更新患者状态为active
+        patientMapper.updateStatus(relation.getPatientId(), Patient.STATUS_ACTIVE);
+
+        return true;
+    }
+
+    @Override
+    @Transactional
+    public boolean rejectRelation(Long relationId) {
+        PatientDoctorRelation relation = relationMapper.selectById(relationId);
+        if (relation == null || !PatientDoctorRelation.BIND_STATUS_PENDING.equals(relation.getBindStatus())) {
+            return false;
+        }
+
+        // 更新绑定状态
+        relation.setBindStatus(PatientDoctorRelation.BIND_STATUS_REJECTED);
+        relation.setConfirmTime(LocalDateTime.now());
+        relationMapper.updateById(relation);
+
+        // 更新患者状态为rejected
+        patientMapper.updateStatus(relation.getPatientId(), Patient.STATUS_REJECTED);
+
+        return true;
+    }
 }
