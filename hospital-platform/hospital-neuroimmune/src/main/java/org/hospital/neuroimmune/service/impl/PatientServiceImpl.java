@@ -189,7 +189,11 @@ public class PatientServiceImpl implements PatientService {
             wrapper.eq(Patient::getGender, request.getGender());
         }
         if (request.getIsRealAuth() != null) {
-            wrapper.eq(Patient::getIsRealAuth, request.getIsRealAuth());
+            if (request.getIsRealAuth()) {
+                wrapper.isNotNull(Patient::getIdCard).ne(Patient::getIdCard, "");
+            } else {
+                wrapper.and(w -> w.isNull(Patient::getIdCard).or().eq(Patient::getIdCard, ""));
+            }
         }
         // doctorId filter is handled separately in getListByDoctorId
         // Disease type filter - now uses patient_disease table
