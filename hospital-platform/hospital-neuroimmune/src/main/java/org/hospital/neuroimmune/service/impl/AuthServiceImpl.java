@@ -4,18 +4,25 @@ import org.hospital.common.model.LoginRequest;
 import org.hospital.common.security.JwtUtil;
 import org.hospital.common.security.TokenStorage;
 import org.hospital.common.security.UserInfo;
+import org.hospital.common.util.PasswordUtil;
 import org.hospital.neuroimmune.entity.Doctor;
 import org.hospital.neuroimmune.entity.Patient;
+import org.hospital.neuroimmune.entity.PatientDoctorRelation;
 import org.hospital.neuroimmune.model.LoginResult;
+import org.hospital.neuroimmune.model.RegisterRequest;
+import org.hospital.neuroimmune.model.RegisterResult;
 import org.hospital.neuroimmune.service.AuthService;
 import org.hospital.neuroimmune.service.DoctorRoleService;
 import org.hospital.neuroimmune.service.DoctorService;
+import org.hospital.neuroimmune.service.PatientDoctorRelationService;
 import org.hospital.neuroimmune.service.PatientService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -41,6 +48,9 @@ public class AuthServiceImpl implements AuthService {
 
     @Autowired
     private TokenStorage tokenStorage;
+
+    @Autowired
+    private PatientDoctorRelationService relationService;
 
     @Override
     public LoginResult login(LoginRequest request) {
@@ -164,6 +174,51 @@ public class AuthServiceImpl implements AuthService {
         tokenStorage.storeToken(userInfo, token);
 
         return LoginResult.ok(token, doctor, role);
+    }
+
+    @Override
+    @Transactional
+    public RegisterResult register(RegisterRequest request) {
+        // 1. 检查手机号是否已存在
+        if (checkPhoneExists(request.getPhone())) {
+            return RegisterResult.fail("该手机号已注册");
+        }
+
+        // 2. 创建患者（状态为pending）
+        Patient patient = new Patient();
+        patient.setPhone(request.getPhone());
+        patient.setPassword(PasswordUtil.encode(request.getPassword()));
+        patient.setName(request.getName());
+        patient.setGender(request.getGender());
+        patient.setBirthDate(request.getBirthDate() != null ?
+            request.getBirthDate().atStartOfDay() : null);
+        patient.setStatus(Patient.STATUS_PENDING);
+
+        // 使用现有的 patientService.save() 方法
+        patientService.save(patient);
+
+        // 3. 创建待确认的绑定关系
+        PatientDoctorRelation relation = new PatientDoctorRelation();
+        relation.setPatientId(patient.getId());
+        relation.setDoctorId(request.getDoctorId());
+        relation.setRelationType("primary");
+        relation.setStatus(PatientDoctorRelation.STATUS_ACTIVE);
+        relation.setBindStatus(PatientDoctorRelation.BIND_STATUS_PENDING);
+        relation.setBindMethod("patient");
+        relation.setRequestTime(LocalDateTime.now());
+
+        relationService.createPendingRelation(relation);
+
+        logger.info("患者注册成功: phone={}, patientId={}, doctorId={}",
+            request.getPhone(), patient.getId(), request.getDoctorId());
+
+        return RegisterResult.ok(patient.getId(), "pending");
+    }
+
+    @Override
+    public boolean checkPhoneExists(String phone) {
+        Patient existing = patientService.getByPhone(phone);
+        return existing != null;
     }
 
     /**
