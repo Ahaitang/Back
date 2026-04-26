@@ -81,6 +81,21 @@ public interface PatientDoctorRelationMapper extends BaseMapper<PatientDoctorRel
     @Select("SELECT CAST(COUNT(*) AS UNSIGNED) FROM patient_doctor_relation WHERE doctor_id = #{doctorId} AND status = 1")
     Long countByDoctorId(Long doctorId);
 
+    /**
+     * 按医生ID和绑定状态查询
+     */
+    @Select("SELECT r.id, r.patient_id, r.doctor_id, r.relation_type, r.status, r.bind_status, r.bind_method, " +
+            "r.remark, r.request_time, r.confirm_time, r.bind_time, r.unbind_time, r.create_time, " +
+            "p.name AS patient_name, d.name AS doctor_name " +
+            "FROM patient_doctor_relation r " +
+            "LEFT JOIN patient p ON r.patient_id = p.id " +
+            "LEFT JOIN doctor d ON r.doctor_id = d.id " +
+            "WHERE r.doctor_id = #{doctorId} AND r.bind_status = #{bindStatus} AND r.is_deleted = 0 " +
+            "ORDER BY r.request_time DESC")
+    List<PatientDoctorRelation> selectByDoctorIdAndBindStatus(
+        @Param("doctorId") Long doctorId,
+        @Param("bindStatus") String bindStatus);
+
     @Update("UPDATE patient_doctor_relation SET status = 0, unbind_time = NOW() WHERE id = #{id}")
     int unbind(Long id);
 
