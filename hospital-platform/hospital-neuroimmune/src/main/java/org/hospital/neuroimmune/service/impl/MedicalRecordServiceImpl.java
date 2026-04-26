@@ -158,8 +158,9 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
 
     @Override
     public Long countByDoctorId(Long doctorId) {
+        // 通过 patient_doctor_relation 关联查询医生管理的患者的病历数量
         LambdaQueryWrapper<MedicalRecord> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(MedicalRecord::getDoctorId, doctorId);
+        wrapper.apply("patient_id IN (SELECT patient_id FROM patient_doctor_relation WHERE doctor_id = {0} AND status = 1)", doctorId);
         Object count = medicalRecordMapper.selectCount(wrapper);
         return count != null ? Long.valueOf(count.toString()) : 0L;
     }

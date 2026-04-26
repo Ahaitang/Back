@@ -20,9 +20,9 @@ public class PatientDoctorRelation {
     public static final int STATUS_INACTIVE = 0;
 
     // 绑定状态常量（用于审核流程）
-    public static final String BIND_STATUS_PENDING = "pending";     // 待确认
-    public static final String BIND_STATUS_CONFIRMED = "confirmed"; // 已确认
-    public static final String BIND_STATUS_REJECTED = "rejected";  // 已拒绝
+    public static final Integer BIND_STATUS_PENDING = 0;     // 待确认
+    public static final Integer BIND_STATUS_CONFIRMED = 1;   // 已确认
+    public static final Integer BIND_STATUS_REJECTED = 2;    // 已拒绝
 
     @TableId(type = IdType.AUTO)
     private Long id;
@@ -46,9 +46,9 @@ public class PatientDoctorRelation {
     private Integer status;
 
     /**
-     * 绑定审核状态：pending-待确认, confirmed-已确认, rejected-已拒绝
+     * 绑定审核状态：0-待确认, 1-已确认, 2-已拒绝
      */
-    private String bindStatus;
+    private Integer bindStatus;
 
     /**
      * 绑定方式：system-系统分配, patient-患者选择, doctor-医生邀请

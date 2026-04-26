@@ -158,27 +158,26 @@ public class AuthServiceImpl implements AuthService {
             return LoginResult.fail("用户名或密码错误");
         }
 
-        // 状态校验
-        String status = patient.getStatus();
+        // 状态校验（Integer类型）
+        Integer status = patient.getStatus();
         if (status == null) {
             status = Patient.STATUS_ACTIVE; // 兼容旧数据
         }
 
-        switch (status) {
-            case Patient.STATUS_PENDING:
-                return LoginResult.fail("账户等待医生确认，请稍后再试");
-            case Patient.STATUS_REJECTED:
-                return LoginResult.fail("注册已被拒绝，请重新选择医生注册");
-            case Patient.STATUS_INACTIVE:
-                return LoginResult.fail("账户已被禁用");
-            case Patient.STATUS_ACTIVE:
-                // 正常登录
-                UserInfo userInfo = new UserInfo(patient.getId(), patient.getName(), "patient", "neuroimmune");
-                String token = jwtUtil.generateToken(userInfo);
-                tokenStorage.storeToken(userInfo, token);
-                return LoginResult.ok(token, patient, "patient");
-            default:
-                return LoginResult.fail("账户状态异常");
+        if (status.equals(Patient.STATUS_PENDING)) {
+            return LoginResult.fail("账户等待医生确认，请稍后再试");
+        } else if (status.equals(Patient.STATUS_REJECTED)) {
+            return LoginResult.fail("注册已被拒绝，请重新选择医生注册");
+        } else if (status.equals(Patient.STATUS_INACTIVE)) {
+            return LoginResult.fail("账户已被禁用");
+        } else if (status.equals(Patient.STATUS_ACTIVE)) {
+            // 正常登录
+            UserInfo userInfo = new UserInfo(patient.getId(), patient.getName(), "patient", "neuroimmune");
+            String token = jwtUtil.generateToken(userInfo);
+            tokenStorage.storeToken(userInfo, token);
+            return LoginResult.ok(token, patient, "patient");
+        } else {
+            return LoginResult.fail("账户状态异常");
         }
     }
 

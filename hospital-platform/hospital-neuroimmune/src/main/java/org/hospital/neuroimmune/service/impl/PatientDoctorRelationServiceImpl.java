@@ -211,7 +211,8 @@ public class PatientDoctorRelationServiceImpl implements PatientDoctorRelationSe
     @Transactional
     public boolean confirmRelation(Long relationId) {
         PatientDoctorRelation relation = relationMapper.selectById(relationId);
-        if (relation == null || !PatientDoctorRelation.BIND_STATUS_PENDING.equals(relation.getBindStatus())) {
+        Integer currentStatus = relation != null ? relation.getBindStatus() : null;
+        if (relation == null || currentStatus == null || !currentStatus.equals(PatientDoctorRelation.BIND_STATUS_PENDING)) {
             return false;
         }
 
@@ -230,7 +231,8 @@ public class PatientDoctorRelationServiceImpl implements PatientDoctorRelationSe
     @Transactional
     public boolean rejectRelation(Long relationId) {
         PatientDoctorRelation relation = relationMapper.selectById(relationId);
-        if (relation == null || !PatientDoctorRelation.BIND_STATUS_PENDING.equals(relation.getBindStatus())) {
+        Integer currentStatus = relation != null ? relation.getBindStatus() : null;
+        if (relation == null || currentStatus == null || !currentStatus.equals(PatientDoctorRelation.BIND_STATUS_PENDING)) {
             return false;
         }
 

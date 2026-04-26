@@ -94,7 +94,7 @@ public interface PatientDoctorRelationMapper extends BaseMapper<PatientDoctorRel
             "ORDER BY r.request_time DESC")
     List<PatientDoctorRelation> selectByDoctorIdAndBindStatus(
         @Param("doctorId") Long doctorId,
-        @Param("bindStatus") String bindStatus);
+        @Param("bindStatus") Integer bindStatus);
 
     @Update("UPDATE patient_doctor_relation SET status = 0, unbind_time = NOW() WHERE id = #{id}")
     int unbind(Long id);

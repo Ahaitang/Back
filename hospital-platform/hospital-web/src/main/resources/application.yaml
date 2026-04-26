@@ -37,5 +37,5 @@ logging:
 super-admin:
   accounts:
     - username: admin
-      password: ${SUPER_ADMIN_PASSWORD:}
+      password: ${SUPER_ADMIN_PASSWORD:admin123}
       name: 超级管理员

@@ -17,5 +17,5 @@ public interface NeuroimmunePatientMapper extends BaseMapper<Patient> {
      * 更新患者状态
      */
     @Update("UPDATE patient SET status = #{status}, update_time = NOW() WHERE id = #{id}")
-    int updateStatus(@Param("id") Long id, @Param("status") String status);
+    int updateStatus(@Param("id") Long id, @Param("status") Integer status);
 }

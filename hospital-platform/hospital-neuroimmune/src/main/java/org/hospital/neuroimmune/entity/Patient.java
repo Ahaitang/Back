@@ -18,10 +18,10 @@ import java.util.List;
 @TableName("patient")
 public class Patient {
     // 状态常量
-    public static final String STATUS_PENDING = "pending";     // 待审核
-    public static final String STATUS_ACTIVE = "active";       // 正常
-    public static final String STATUS_REJECTED = "rejected";   // 已拒绝
-    public static final String STATUS_INACTIVE = "inactive";   // 已停用
+    public static final Integer STATUS_PENDING = 0;     // 待审核
+    public static final Integer STATUS_ACTIVE = 1;      // 正常
+    public static final Integer STATUS_REJECTED = 2;    // 已拒绝
+    public static final Integer STATUS_INACTIVE = 3;    // 已停用
 
     @TableId(type = IdType.AUTO)
     private Long id;
@@ -39,7 +39,7 @@ public class Patient {
     private String avatar;
     private String idCard;
 
-    private String status;  // 患者状态: pending, active, rejected, inactive
+    private Integer status;  // 患者状态: 0-待确认, 1-正常, 2-已拒绝, 3-禁用
 
     @TableField(exist = false)
     private Boolean hasFollowUp;  // 计算字段，从 follow_up 表统计
