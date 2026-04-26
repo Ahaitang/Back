@@ -16,6 +16,8 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 /**
  * 随访服务实现
@@ -201,5 +203,27 @@ public class FollowUpServiceImpl implements FollowUpService {
                      .ne(FollowUp::getStatus, RecordStatus.CANCELLED.getCode())
                      .set(FollowUp::getStatus, RecordStatus.CANCELLED.getCode());
         followUpMapper.update(null, updateWrapper);
+    }
+
+    @Override
+    public Map<Long, Boolean> batchGetPendingStatus(List<Long> patientIds) {
+        Map<Long, Boolean> result = new HashMap<>();
+        // 初始化所有患者ID为false
+        for (Long patientId : patientIds) {
+            result.put(patientId, false);
+        }
+        // 查询有待随访记录的患者ID
+        if (!patientIds.isEmpty()) {
+            LambdaQueryWrapper<FollowUp> wrapper = new LambdaQueryWrapper<>();
+            wrapper.in(FollowUp::getPatientId, patientIds)
+                   .eq(FollowUp::getStatus, RecordStatus.ONGOING.getCode())
+                   .select(FollowUp::getPatientId)
+                   .groupBy(FollowUp::getPatientId);
+            List<FollowUp> pendingFollowUps = followUpMapper.selectList(wrapper);
+            for (FollowUp followUp : pendingFollowUps) {
+                result.put(followUp.getPatientId(), true);
+            }
+        }
+        return result;
     }
 }
