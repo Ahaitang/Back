@@ -23,6 +23,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -112,7 +113,11 @@ public class PatientServiceImpl implements PatientService {
         }
 
         // Apply disease type filter (支持多选优先，兼容单选)
-        List<String> diseaseTypeFilter = request.getDiseaseTypes();
+        List<String> diseaseTypeFilter = null;
+        if (request.getDiseaseTypes() != null && !request.getDiseaseTypes().isEmpty()) {
+            // 解析逗号分隔的字符串
+            diseaseTypeFilter = Arrays.asList(request.getDiseaseTypes().split(","));
+        }
         if (diseaseTypeFilter == null || diseaseTypeFilter.isEmpty()) {
             // 兼容旧的单选参数
             if (request.getType() != null && !request.getType().isEmpty()) {
@@ -245,7 +250,11 @@ public class PatientServiceImpl implements PatientService {
         }
         // doctorId filter is handled separately in getListByDoctorId
         // Disease type filter - supports multiple types (包含匹配)
-        List<String> diseaseTypeFilter = request.getDiseaseTypes();
+        List<String> diseaseTypeFilter = null;
+        if (request.getDiseaseTypes() != null && !request.getDiseaseTypes().isEmpty()) {
+            // 解析逗号分隔的字符串
+            diseaseTypeFilter = Arrays.asList(request.getDiseaseTypes().split(","));
+        }
         if (diseaseTypeFilter == null || diseaseTypeFilter.isEmpty()) {
             // 兼容旧的单选参数
             if (request.getType() != null && !request.getType().isEmpty()) {
