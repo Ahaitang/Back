@@ -13,6 +13,7 @@ import org.hospital.neuroimmune.mapper.CommonDictMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -198,14 +199,12 @@ public class EntityNameEnricher {
 
         if (typeIds.isEmpty()) return;
 
-        // 从字典表查询
-        Map<Long, String> typeNameMap = new HashMap<>();
-        for (Long typeId : typeIds) {
-            CommonDict dict = commonDictMapper.selectById(typeId);
-            if (dict != null) {
-                typeNameMap.put(typeId, dict.getName());
-            }
-        }
+        // 批量查询（MyBatis-Plus BaseMapper 自带 selectBatchIds 方法）
+        List<Long> typeIdList = new ArrayList<>(typeIds);
+        List<CommonDict> dicts = commonDictMapper.selectBatchIds(typeIdList);
+
+        Map<Long, String> typeNameMap = dicts.stream()
+                .collect(Collectors.toMap(CommonDict::getId, CommonDict::getName));
 
         // 填充名称
         for (FollowUp fu : followUps) {
