@@ -58,12 +58,12 @@ public class ScheduleServiceImpl implements ScheduleService {
         for (FollowUp fu : followUps) {
             ScheduleDTO.ScheduleItem item = new ScheduleDTO.ScheduleItem();
             item.setId(fu.getId());
-            item.setTime(formatTime(fu.getDate()));
+            item.setTime(formatTime(fu.getHospitalizationTime()));
             item.setWho("doctor".equals(role) ? fu.getPatientName() : fu.getDoctorName());
-            item.setDate(formatDate(fu.getDate()));
-            item.setType(fu.getType());
+            item.setDate(formatDate(fu.getHospitalizationTime()));
+            item.setType(fu.getFollowUpExamTypeName());
             item.setStatus(fu.getStatus() != null ? String.valueOf(fu.getStatus()) : "0");
-            item.setContent(fu.getProject());
+            item.setContent(fu.getExaminationItems());
             schedule.getFollow().add(item);
         }
 
@@ -199,7 +199,8 @@ public class ScheduleServiceImpl implements ScheduleService {
         LocalDateTime endOfDay = queryDate.plusDays(1).atStartOfDay();
 
         LambdaQueryWrapper<FollowUp> wrapper = new LambdaQueryWrapper<>();
-        wrapper.ge(FollowUp::getDate, startOfDay).lt(FollowUp::getDate, endOfDay);
+        // 查询住院时间匹配的随访
+        wrapper.ge(FollowUp::getHospitalizationTime, startOfDay).lt(FollowUp::getHospitalizationTime, endOfDay);
 
         if ("doctor".equals(role) && userId != null) {
             wrapper.eq(FollowUp::getDoctorId, userId);
@@ -207,7 +208,7 @@ public class ScheduleServiceImpl implements ScheduleService {
             wrapper.eq(FollowUp::getPatientId, userId);
         }
 
-        wrapper.orderByAsc(FollowUp::getDate);
+        wrapper.orderByAsc(FollowUp::getCreateTime);
         return followUpMapper.selectList(wrapper);
     }
 

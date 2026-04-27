@@ -37,7 +37,7 @@ public class FollowUpServiceImpl implements FollowUpService {
         Page<FollowUp> page = new Page<>(request.getPageNum(), request.getPageSize());
 
         LambdaQueryWrapper<FollowUp> wrapper = buildQueryWrapper(request);
-        wrapper.orderByDesc(FollowUp::getDate).orderByDesc(FollowUp::getCreateTime);
+        wrapper.orderByDesc(FollowUp::getCreateTime);
 
         Page<FollowUp> result = followUpMapper.selectPage(page, wrapper);
         nameEnricher.enrichFollowUps(result.getRecords());
@@ -50,7 +50,7 @@ public class FollowUpServiceImpl implements FollowUpService {
 
         LambdaQueryWrapper<FollowUp> wrapper = buildQueryWrapper(request);
         wrapper.eq(FollowUp::getDoctorId, doctorId);
-        wrapper.orderByDesc(FollowUp::getDate).orderByDesc(FollowUp::getCreateTime);
+        wrapper.orderByDesc(FollowUp::getCreateTime);
 
         Page<FollowUp> result = followUpMapper.selectPage(page, wrapper);
         nameEnricher.enrichFollowUps(result.getRecords());
@@ -78,16 +78,12 @@ public class FollowUpServiceImpl implements FollowUpService {
             String keyword = request.getKeyword();
             wrapper.and(w -> w.apply("patient_id IN (SELECT id FROM patient WHERE name LIKE {0})", "%" + keyword + "%")
                     .or().apply("doctor_id IN (SELECT id FROM doctor WHERE name LIKE {0})", "%" + keyword + "%")
-                    .or().like(FollowUp::getProject, keyword));
+                    .or().like(FollowUp::getExaminationItems, keyword)
+                    .or().like(FollowUp::getNotes, keyword));
         }
+        // 按 followUpExamTypeId 筛选（如果传入了类型名称）
         if (request.getType() != null && !request.getType().isEmpty()) {
-            wrapper.eq(FollowUp::getType, request.getType());
-        }
-        if (request.getStartDate() != null && !request.getStartDate().isEmpty()) {
-            wrapper.ge(FollowUp::getDate, request.getStartDate());
-        }
-        if (request.getEndDate() != null && !request.getEndDate().isEmpty()) {
-            wrapper.le(FollowUp::getDate, request.getEndDate());
+            wrapper.apply("follow_up_exam_type_id IN (SELECT id FROM dict_common WHERE dict_type = 'followUpExamType' AND name = {0})", request.getType());
         }
 
         return wrapper;
@@ -152,7 +148,7 @@ public class FollowUpServiceImpl implements FollowUpService {
         LambdaQueryWrapper<FollowUp> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(FollowUp::getDoctorId, doctorId)
                .eq(FollowUp::getStatus, RecordStatus.ONGOING.getCode())
-               .orderByAsc(FollowUp::getDate);
+               .orderByDesc(FollowUp::getCreateTime);
         List<FollowUp> list = followUpMapper.selectList(wrapper);
         nameEnricher.enrichFollowUps(list);
         return list;
