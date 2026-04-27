@@ -6,14 +6,18 @@ import org.hospital.neuroimmune.entity.Medication;
 import org.hospital.neuroimmune.entity.Patient;
 import org.hospital.neuroimmune.entity.Doctor;
 import org.hospital.neuroimmune.entity.DiseaseEpisode;
+import org.hospital.neuroimmune.entity.CommonDict;
 import org.hospital.neuroimmune.service.EntityQueryService;
 import org.hospital.neuroimmune.service.DiseaseEpisodeService;
+import org.hospital.neuroimmune.mapper.CommonDictMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -28,6 +32,9 @@ public class EntityNameEnricher {
 
     @Autowired
     private DiseaseEpisodeService diseaseEpisodeService;
+
+    @Autowired
+    private CommonDictMapper commonDictMapper;
 
     /**
      * 填充随访记录的名称
@@ -62,6 +69,9 @@ public class EntityNameEnricher {
                 if (d != null) fu.setDoctorName(d.getName());
             }
         });
+
+        // 填充随访检查类型名称
+        enrichFollowUpExamTypeName(followUps);
     }
 
     /**
@@ -170,6 +180,37 @@ public class EntityNameEnricher {
             DiseaseEpisode episode = diseaseEpisodeService.getById(record.getRelatedEpisodeId());
             if (episode != null) {
                 record.setRelatedEpisodeNumber(episode.getEpisodeNumber());
+            }
+        }
+    }
+
+    /**
+     * 填充随访检查类型名称
+     */
+    private void enrichFollowUpExamTypeName(List<FollowUp> followUps) {
+        if (followUps == null || followUps.isEmpty()) return;
+
+        // 收集所有 followUpExamTypeId
+        Set<Long> typeIds = followUps.stream()
+                .map(FollowUp::getFollowUpExamTypeId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        if (typeIds.isEmpty()) return;
+
+        // 从字典表查询
+        Map<Long, String> typeNameMap = new HashMap<>();
+        for (Long typeId : typeIds) {
+            CommonDict dict = commonDictMapper.selectById(typeId);
+            if (dict != null) {
+                typeNameMap.put(typeId, dict.getName());
+            }
+        }
+
+        // 填充名称
+        for (FollowUp fu : followUps) {
+            if (fu.getFollowUpExamTypeId() != null) {
+                fu.setFollowUpExamTypeName(typeNameMap.getOrDefault(fu.getFollowUpExamTypeId(), ""));
             }
         }
     }
