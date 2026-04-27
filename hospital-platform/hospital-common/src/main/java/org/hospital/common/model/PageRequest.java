@@ -3,6 +3,7 @@ package org.hospital.common.model;
 import lombok.Data;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
+import java.util.List;
 
 /**
  * 分页请求参数
@@ -28,6 +29,8 @@ public class PageRequest {
     private String startDate;
     private String endDate;
     private Long relatedEpisodeId;  // 关联的发作记录ID
+    private Integer bindStatus;  // 绑定状态筛选: 0-待审核, 1-已确认, 2-已拒绝, -1-未绑定
+    private List<String> diseaseTypes;  // 疾病类型多选筛选（包含匹配）
 
     /**
      * 计算偏移量，用于 MySQL 分页
