@@ -12,4 +12,7 @@ public interface PatientDiseaseMapper extends BaseMapper<PatientDisease> {
 
     @Select("SELECT patient_id FROM patient_disease WHERE disease_code = #{diseaseCode}")
     List<Long> findPatientIdsByDiseaseCode(@Param("diseaseCode") String diseaseCode);
+
+    @Select("SELECT patient_id FROM patient_disease WHERE disease_code IN (${diseaseCodes})")
+    List<Long> findPatientIdsByDiseaseCodes(@Param("diseaseCodes") String diseaseCodes);
 }

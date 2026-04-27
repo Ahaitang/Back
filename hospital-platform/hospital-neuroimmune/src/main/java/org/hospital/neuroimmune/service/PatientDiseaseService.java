@@ -6,4 +6,5 @@ public interface PatientDiseaseService {
     List<String> getDiseaseCodesByPatientId(Long patientId);
     void setDiseasesForPatient(Long patientId, List<String> diseaseCodes);
     List<Long> getPatientIdsByDiseaseCode(String diseaseCode);
+    List<Long> getPatientIdsByDiseaseCodes(List<String> diseaseCodes);
 }

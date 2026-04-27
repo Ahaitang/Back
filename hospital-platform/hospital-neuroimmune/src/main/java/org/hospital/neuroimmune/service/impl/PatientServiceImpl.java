@@ -84,10 +84,51 @@ public class PatientServiceImpl implements PatientService {
                 .map(PatientDoctorRelation::getPatientId)
                 .collect(Collectors.toList());
 
-        // Query patients by IDs
+        // Query patients by IDs with additional filters
         LambdaQueryWrapper<Patient> wrapper = new LambdaQueryWrapper<>();
         wrapper.in(Patient::getId, patientIds);
-        wrapper.eq(Patient::getIsDeleted, 0).or().isNull(Patient::getIsDeleted);
+        // 只查询有效数据（必须用括号分组，避免与后续AND条件优先级问题）
+        wrapper.and(w -> w.eq(Patient::getIsDeleted, 0).or().isNull(Patient::getIsDeleted));
+
+        // Apply keyword filter
+        if (request.getKeyword() != null && !request.getKeyword().isEmpty()) {
+            wrapper.and(w -> w.like(Patient::getName, request.getKeyword())
+                    .or().like(Patient::getPhone, request.getKeyword())
+                    .or().like(Patient::getId, request.getKeyword()));
+        }
+
+        // Apply gender filter
+        if (request.getGender() != null && !request.getGender().isEmpty()) {
+            wrapper.eq(Patient::getGender, request.getGender());
+        }
+
+        // Apply isRealAuth filter - check if idCard is non-empty
+        if (request.getIsRealAuth() != null) {
+            if (request.getIsRealAuth()) {
+                wrapper.isNotNull(Patient::getIdCard).ne(Patient::getIdCard, "");
+            } else {
+                wrapper.and(w -> w.isNull(Patient::getIdCard).or().eq(Patient::getIdCard, ""));
+            }
+        }
+
+        // Apply disease type filter (支持多选优先，兼容单选)
+        List<String> diseaseTypeFilter = request.getDiseaseTypes();
+        if (diseaseTypeFilter == null || diseaseTypeFilter.isEmpty()) {
+            // 兼容旧的单选参数
+            if (request.getType() != null && !request.getType().isEmpty()) {
+                diseaseTypeFilter = List.of(request.getType());
+            }
+        }
+        if (diseaseTypeFilter != null && !diseaseTypeFilter.isEmpty()) {
+            List<Long> patientIdsWithTypes = patientDiseaseService.getPatientIdsByDiseaseCodes(diseaseTypeFilter);
+            if (!patientIdsWithTypes.isEmpty()) {
+                wrapper.in(Patient::getId, patientIdsWithTypes);
+            } else {
+                // No patients with these disease types, return empty result
+                wrapper.apply("1 = 0");
+            }
+        }
+
         wrapper.orderByDesc(Patient::getUpdateTime);
 
         Page<Patient> page = new Page<>(request.getPageNum(), request.getPageSize());
@@ -114,7 +155,7 @@ public class PatientServiceImpl implements PatientService {
     }
 
     /**
-     * Populate doctorName for patients from relation table
+     * Populate doctorName and bindStatus for patients from relation table
      */
     private void populateDoctorNames(List<Patient> patients) {
         if (patients == null || patients.isEmpty()) return;
@@ -130,6 +171,8 @@ public class PatientServiceImpl implements PatientService {
             if (relation != null) {
                 p.setDoctorId(relation.getDoctorId());
                 p.setDoctorName(relation.getDoctorName());
+                p.setBindStatus(relation.getBindStatus());
+                p.setRelationId(relation.getId());
             }
         });
     }
@@ -182,8 +225,8 @@ public class PatientServiceImpl implements PatientService {
     private LambdaQueryWrapper<Patient> buildQueryWrapper(PageRequest request) {
         LambdaQueryWrapper<Patient> wrapper = new LambdaQueryWrapper<>();
 
-        // 只查询有效数据
-        wrapper.eq(Patient::getIsDeleted, 0).or().isNull(Patient::getIsDeleted);
+        // 只查询有效数据（必须用括号分组，避免与后续AND条件优先级问题）
+        wrapper.and(w -> w.eq(Patient::getIsDeleted, 0).or().isNull(Patient::getIsDeleted));
 
         if (request.getKeyword() != null && !request.getKeyword().isEmpty()) {
             wrapper.and(w -> w.like(Patient::getName, request.getKeyword())
@@ -201,14 +244,39 @@ public class PatientServiceImpl implements PatientService {
             }
         }
         // doctorId filter is handled separately in getListByDoctorId
-        // Disease type filter - now uses patient_disease table
-        if (request.getType() != null && !request.getType().isEmpty()) {
-            List<Long> patientIdsWithType = patientDiseaseService.getPatientIdsByDiseaseCode(request.getType());
-            if (!patientIdsWithType.isEmpty()) {
-                wrapper.in(Patient::getId, patientIdsWithType);
+        // Disease type filter - supports multiple types (包含匹配)
+        List<String> diseaseTypeFilter = request.getDiseaseTypes();
+        if (diseaseTypeFilter == null || diseaseTypeFilter.isEmpty()) {
+            // 兼容旧的单选参数
+            if (request.getType() != null && !request.getType().isEmpty()) {
+                diseaseTypeFilter = List.of(request.getType());
+            }
+        }
+        if (diseaseTypeFilter != null && !diseaseTypeFilter.isEmpty()) {
+            List<Long> patientIdsWithTypes = patientDiseaseService.getPatientIdsByDiseaseCodes(diseaseTypeFilter);
+            if (!patientIdsWithTypes.isEmpty()) {
+                wrapper.in(Patient::getId, patientIdsWithTypes);
             } else {
-                // No patients with this disease type, return empty result
                 wrapper.apply("1 = 0");
+            }
+        }
+
+        // bindStatus filter: -1表示未绑定，0/1/2表示对应绑定状态
+        if (request.getBindStatus() != null) {
+            if (request.getBindStatus() == -1) {
+                // 未绑定：排除所有有绑定关系记录的患者
+                List<Long> patientIdsWithRelation = relationService.getAllPatientIdsWithRelation();
+                if (!patientIdsWithRelation.isEmpty()) {
+                    wrapper.notIn(Patient::getId, patientIdsWithRelation);
+                }
+            } else {
+                // 按绑定状态筛选：0-待审核, 1-已确认, 2-已拒绝
+                List<Long> patientIdsWithBindStatus = relationService.getPatientIdsByBindStatus(request.getBindStatus());
+                if (!patientIdsWithBindStatus.isEmpty()) {
+                    wrapper.in(Patient::getId, patientIdsWithBindStatus);
+                } else {
+                    wrapper.apply("1 = 0");
+                }
             }
         }
 
