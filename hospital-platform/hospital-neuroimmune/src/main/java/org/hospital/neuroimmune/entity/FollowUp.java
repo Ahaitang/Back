@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 
 /**
  * 随访记录实体
- * 继承 BaseRecordEntity，复用状态管理行为
+ * 简化字段：保留患者、医生、周期性门诊时间、住院时间、检查项目、备注
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -33,22 +33,25 @@ public class FollowUp extends BaseRecordEntity {
     @TableField(exist = false)
     private String doctorName;
 
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private LocalDateTime date;
+    // 门诊随访周期字段
+    private String outpatientCycleType;     // 周期类型：monthly/weekly/quarterly
+    private String outpatientCycleValue;    // 周期值：每月几号/每周几/季度日期
+    private String outpatientTimeSlot;      // 时间段：morning/afternoon/evening
 
-    private String project;
-    private String type;
-    private String content;
+    // 住院时间
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDateTime hospitalizationTime;
 
-    // 详细字段
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm")
-    private LocalDateTime outpatientTime;       // 门诊时间
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private LocalDateTime hospitalizationTime;  // 住院时间
-    private String examinationItems;            // 检查项目
-    private String hospital;                    // 医院
-    private String department;                  // 科室
-    private String notes;                       // 备注
+    // 随访检查类型（字典ID）
+    private Long followUpExamTypeId;
+    @TableField(exist = false)
+    private String followUpExamTypeName;    // 类型名称（从字典查询填充）
+
+    // 检查项目（勾选结果，逗号分隔）
+    private String examinationItems;
+
+    // 备注
+    private String notes;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;
