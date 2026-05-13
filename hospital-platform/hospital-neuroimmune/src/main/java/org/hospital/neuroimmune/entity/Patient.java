@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import lombok.Data;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -29,6 +30,7 @@ public class Patient {
     private String gender;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonAlias("birthday")
     private LocalDateTime birthDate;  // 出生日期
 
     @TableField(exist = false)
@@ -52,6 +54,12 @@ public class Patient {
 
     @TableField(exist = false)
     private String doctorName;  // 非持久化字段，通过 patient_doctor_relation 查询获取
+
+    @TableField(exist = false)
+    private Long relationId;  // 非持久化字段，绑定关系ID（用于审核操作）
+
+    @TableField(exist = false)
+    private Integer bindStatus;  // 非持久化字段，绑定审核状态: 0-待确认, 1-已确认, 2-已拒绝, null-未绑定
 
     @TableField(exist = false)
     private List<String> diseaseTypes;  // 从 patient_disease 表查询

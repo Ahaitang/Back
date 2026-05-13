@@ -23,7 +23,25 @@ public interface PatientDoctorRelationMapper extends BaseMapper<PatientDoctorRel
             "ORDER BY r.bind_time DESC")
     List<PatientDoctorRelation> selectByPatientId(Long patientId);
 
-    @Select("SELECT r.id, r.patient_id, r.doctor_id, r.relation_type, r.status, r.bind_method, " +
+    @Select("SELECT r.id, r.patient_id, r.doctor_id, r.relation_type, r.status, r.bind_status, r.bind_method, " +
+            "r.remark, r.bind_time, r.unbind_time, r.create_time, p.name AS patient_name, d.name AS doctor_name " +
+            "FROM patient_doctor_relation r " +
+            "LEFT JOIN patient p ON r.patient_id = p.id " +
+            "LEFT JOIN doctor d ON r.doctor_id = d.id " +
+            "WHERE r.patient_id = #{patientId} AND r.status = 1 AND r.bind_status = 1 " +
+            "ORDER BY r.bind_time DESC LIMIT 1")
+    PatientDoctorRelation selectConfirmedByPatientId(Long patientId);
+
+    @Select("SELECT r.id, r.patient_id, r.doctor_id, r.relation_type, r.status, r.bind_status, r.bind_method, " +
+            "r.remark, r.request_time, r.create_time, p.name AS patient_name, d.name AS doctor_name " +
+            "FROM patient_doctor_relation r " +
+            "LEFT JOIN patient p ON r.patient_id = p.id " +
+            "LEFT JOIN doctor d ON r.doctor_id = d.id " +
+            "WHERE r.patient_id = #{patientId} AND r.status = 1 AND r.bind_status = 0 " +
+            "ORDER BY r.request_time DESC LIMIT 1")
+    PatientDoctorRelation selectPendingByPatientId(Long patientId);
+
+    @Select("SELECT r.id, r.patient_id, r.doctor_id, r.relation_type, r.status, r.bind_status, r.bind_method, " +
             "r.remark, r.bind_time, r.unbind_time, r.create_time, p.name AS patient_name, d.name AS doctor_name " +
             "FROM patient_doctor_relation r " +
             "LEFT JOIN patient p ON r.patient_id = p.id " +
@@ -33,11 +51,14 @@ public interface PatientDoctorRelationMapper extends BaseMapper<PatientDoctorRel
     PatientDoctorRelation selectActiveByPatientId(Long patientId);
 
     /**
-     * 批量查询患者当前生效的主治医生
+     * 批量查询患者当前的绑定关系（包含bind_status）
+     * 返回每个患者最新的绑定关系（status=1），只取每个患者最新一条
+     * 使用子查询兼容 MySQL 5.x
      */
     @Select("<script>" +
-            "SELECT r.id, r.patient_id, r.doctor_id, r.relation_type, r.status, r.bind_method, " +
-            "r.remark, r.bind_time, r.unbind_time, r.create_time, p.name AS patient_name, d.name AS doctor_name " +
+            "SELECT r.id, r.patient_id, r.doctor_id, r.relation_type, r.status, r.bind_status, r.bind_method, " +
+            "r.remark, r.request_time, r.bind_time, r.unbind_time, r.create_time, " +
+            "p.name AS patient_name, d.name AS doctor_name " +
             "FROM patient_doctor_relation r " +
             "LEFT JOIN patient p ON r.patient_id = p.id " +
             "LEFT JOIN doctor d ON r.doctor_id = d.id " +
@@ -45,7 +66,11 @@ public interface PatientDoctorRelationMapper extends BaseMapper<PatientDoctorRel
             "<foreach item='id' collection='patientIds' open='(' separator=',' close=')'>" +
             "#{id}" +
             "</foreach>" +
-            " AND r.status = 1 AND r.relation_type = 'primary'" +
+            " AND r.status = 1 AND r.is_deleted = 0 " +
+            "AND r.request_time = (" +
+            "SELECT MAX(r2.request_time) FROM patient_doctor_relation r2 " +
+            "WHERE r2.patient_id = r.patient_id AND r2.status = 1 AND r2.is_deleted = 0" +
+            ")" +
             "</script>")
     List<PatientDoctorRelation> selectBatchActiveByPatientIds(@Param("patientIds") List<Long> patientIds);
 
@@ -58,12 +83,12 @@ public interface PatientDoctorRelationMapper extends BaseMapper<PatientDoctorRel
             "ORDER BY r.bind_time DESC")
     List<PatientDoctorRelation> selectByDoctorId(Long doctorId);
 
-    @Select("SELECT r.id, r.patient_id, r.doctor_id, r.relation_type, r.status, r.bind_method, " +
+    @Select("SELECT r.id, r.patient_id, r.doctor_id, r.relation_type, r.status, r.bind_status, r.bind_method, " +
             "r.remark, r.bind_time, r.unbind_time, r.create_time, p.name AS patient_name, d.name AS doctor_name " +
             "FROM patient_doctor_relation r " +
             "LEFT JOIN patient p ON r.patient_id = p.id " +
             "LEFT JOIN doctor d ON r.doctor_id = d.id " +
-            "WHERE r.doctor_id = #{doctorId} AND r.status = 1 " +
+            "WHERE r.doctor_id = #{doctorId} AND r.status = 1 AND r.bind_status = 1 " +
             "ORDER BY r.bind_time DESC")
     List<PatientDoctorRelation> selectActiveByDoctorId(Long doctorId);
 
@@ -78,7 +103,12 @@ public interface PatientDoctorRelationMapper extends BaseMapper<PatientDoctorRel
     // 动态 SQL 查询，保留 XML 定义
     List<PatientDoctorRelation> selectRelationList(@Param("patientName") String patientName, @Param("doctorName") String doctorName, @Param("status") String status);
 
-    @Select("SELECT CAST(COUNT(*) AS UNSIGNED) FROM patient_doctor_relation WHERE doctor_id = #{doctorId} AND status = 1")
+    @Select("SELECT CAST(COUNT(*) AS UNSIGNED) " +
+            "FROM patient_doctor_relation r " +
+            "INNER JOIN patient p ON r.patient_id = p.id " +
+            "WHERE r.doctor_id = #{doctorId} AND r.status = 1 AND r.bind_status = 1 " +
+            "AND (r.is_deleted = 0 OR r.is_deleted IS NULL) " +
+            "AND (p.is_deleted = 0 OR p.is_deleted IS NULL)")
     Long countByDoctorId(Long doctorId);
 
     /**
@@ -106,15 +136,40 @@ public interface PatientDoctorRelationMapper extends BaseMapper<PatientDoctorRel
     int unbindAllByDoctorId(@Param("doctorId") Long doctorId);
 
     /**
-     * 批量统计医生的患者数量
+     * 批量统计医生的患者数量（只统计已确认绑定的有效患者）
      */
     @Select("<script>" +
-            "SELECT doctor_id, COUNT(*) as cnt FROM patient_doctor_relation " +
-            "WHERE status = 1 AND doctor_id IN " +
+            "SELECT r.doctor_id, COUNT(*) as cnt " +
+            "FROM patient_doctor_relation r " +
+            "INNER JOIN patient p ON r.patient_id = p.id " +
+            "WHERE r.status = 1 AND r.bind_status = 1 " +
+            "AND (r.is_deleted = 0 OR r.is_deleted IS NULL) " +
+            "AND (p.is_deleted = 0 OR p.is_deleted IS NULL) " +
+            "AND r.doctor_id IN " +
             "<foreach item='id' collection='ids' open='(' separator=',' close=')'>" +
             "#{id}" +
             "</foreach>" +
-            " GROUP BY doctor_id" +
+            " GROUP BY r.doctor_id" +
             "</script>")
     List<Map<String, Object>> countByDoctorIds(@Param("ids") List<Long> doctorIds);
+
+    /**
+     * 按绑定状态查询患者ID列表（只取每个患者最新的一条绑定关系）
+     * bindStatus: 0-待审核, 1-已确认, 2-已拒绝
+     * 使用子查询兼容 MySQL 5.x
+     */
+    @Select("SELECT DISTINCT r.patient_id FROM patient_doctor_relation r " +
+            "WHERE r.status = 1 AND r.is_deleted = 0 AND r.bind_status = #{bindStatus} " +
+            "AND r.request_time = (" +
+            "SELECT MAX(r2.request_time) FROM patient_doctor_relation r2 " +
+            "WHERE r2.patient_id = r.patient_id AND r2.status = 1 AND r2.is_deleted = 0" +
+            ")")
+    List<Long> selectPatientIdsByBindStatus(@Param("bindStatus") Integer bindStatus);
+
+    /**
+     * 查询有绑定关系记录的所有患者ID（用于排除未绑定的患者）
+     */
+    @Select("SELECT DISTINCT r.patient_id FROM patient_doctor_relation r " +
+            "WHERE r.status = 1 AND r.is_deleted = 0")
+    List<Long> selectAllPatientIdsWithRelation();
 }

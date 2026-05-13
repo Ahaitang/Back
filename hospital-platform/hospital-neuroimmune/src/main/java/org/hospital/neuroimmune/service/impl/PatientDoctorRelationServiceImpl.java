@@ -33,37 +33,54 @@ public class PatientDoctorRelationServiceImpl implements PatientDoctorRelationSe
             throw new RuntimeException("患者不存在");
         }
 
-        // 检查是否已有生效中的绑定
-        PatientDoctorRelation existing = relationMapper.selectActiveByPatientId(patientId);
-        if (existing != null) {
-            // 先解除旧绑定
-            relationMapper.unbind(existing.getId());
+        // 检查是否已有确认中的绑定（bindStatus = CONFIRMED）
+        PatientDoctorRelation confirmedRelation = relationMapper.selectConfirmedByPatientId(patientId);
+        if (confirmedRelation != null) {
+            throw new RuntimeException("您已有绑定的医生，请先解绑后再申请绑定新医生");
         }
 
-        // 检查是否已存在相同的绑定记录
+        // 检查是否已存在待确认的申请
+        PatientDoctorRelation pendingRelation = relationMapper.selectPendingByPatientId(patientId);
+        if (pendingRelation != null) {
+            throw new RuntimeException("您已有待审核的绑定申请，请等待医生审核");
+        }
+
+        // 检查是否已存在相同的绑定记录（被拒绝过的可以重新申请）
         PatientDoctorRelation sameRelation = relationMapper.selectByPatientAndDoctor(patientId, doctorId);
         if (sameRelation != null) {
-            // 重新激活
-            sameRelation.setStatus(STATUS_ACTIVE);
-            sameRelation.setBindTime(LocalDateTime.now());
-            sameRelation.setUnbindTime(null);
+            // 重新发起申请（之前可能被拒绝过）
+            sameRelation.setBindStatus(PatientDoctorRelation.BIND_STATUS_PENDING);
+            sameRelation.setRequestTime(LocalDateTime.now());
+            sameRelation.setConfirmTime(null);
             sameRelation.setRemark(remark);
+            sameRelation.setBindMethod(bindMethod != null ? bindMethod : "patient");
             relationMapper.updateById(sameRelation);
+
+            // 如果患者状态为已拒绝，更新为待审核
+            if (patient.getStatus() != null && patient.getStatus().equals(Patient.STATUS_REJECTED)) {
+                patientMapper.updateStatus(patientId, Patient.STATUS_PENDING);
+            }
             return true;
         }
 
-        // 创建新绑定
+        // 创建新绑定申请（待确认状态）
         PatientDoctorRelation relation = new PatientDoctorRelation();
         relation.setPatientId(patientId);
         relation.setDoctorId(doctorId);
         relation.setRelationType("primary");
-        relation.setStatus(STATUS_ACTIVE);
+        relation.setStatus(STATUS_ACTIVE);  // 记录状态为有效
+        relation.setBindStatus(PatientDoctorRelation.BIND_STATUS_PENDING);  // 待确认
         relation.setBindMethod(bindMethod != null ? bindMethod : "patient");
         relation.setRemark(remark);
-        relation.setBindTime(LocalDateTime.now());
-        // patientName/doctorName 不再存储，由 JOIN 查询时填充
+        relation.setRequestTime(LocalDateTime.now());
 
         int result = relationMapper.insert(relation);
+
+        // 如果患者状态为已拒绝，更新为待审核
+        if (result > 0 && patient.getStatus() != null && patient.getStatus().equals(Patient.STATUS_REJECTED)) {
+            patientMapper.updateStatus(patientId, Patient.STATUS_PENDING);
+        }
+
         return result > 0;
     }
 
@@ -91,7 +108,23 @@ public class PatientDoctorRelationServiceImpl implements PatientDoctorRelationSe
 
     @Override
     public PatientDoctorRelation getActiveDoctor(Long patientId) {
-        return relationMapper.selectActiveByPatientId(patientId);
+        // 只返回已确认的绑定关系
+        return relationMapper.selectConfirmedByPatientId(patientId);
+    }
+
+    @Override
+    public PatientDoctorRelation getLatestRelation(Long patientId) {
+        // 先查待审核的（优先级最高）
+        PatientDoctorRelation pending = relationMapper.selectPendingByPatientId(patientId);
+        if (pending != null) {
+            return pending;
+        }
+        // 再查已确认的
+        PatientDoctorRelation confirmed = relationMapper.selectConfirmedByPatientId(patientId);
+        if (confirmed != null) {
+            return confirmed;
+        }
+        return null;
     }
 
     @Override
@@ -245,5 +278,15 @@ public class PatientDoctorRelationServiceImpl implements PatientDoctorRelationSe
         patientMapper.updateStatus(relation.getPatientId(), Patient.STATUS_REJECTED);
 
         return true;
+    }
+
+    @Override
+    public List<Long> getPatientIdsByBindStatus(Integer bindStatus) {
+        return relationMapper.selectPatientIdsByBindStatus(bindStatus);
+    }
+
+    @Override
+    public List<Long> getAllPatientIdsWithRelation() {
+        return relationMapper.selectAllPatientIdsWithRelation();
     }
 }

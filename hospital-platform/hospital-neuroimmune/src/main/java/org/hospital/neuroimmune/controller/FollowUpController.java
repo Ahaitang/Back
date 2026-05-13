@@ -70,8 +70,9 @@ public class FollowUpController {
     @GetMapping("/pending")
     public Result<List<FollowUp>> getPending(
             @RequestParam(required = false) Long doctorId) {
-        // 如果指定了 doctorId，使用它；否则使用当前用户
-        Long targetDoctorId = doctorId != null ? doctorId : SecurityContextHelper.getCurrentUserId();
+        Long targetDoctorId = SecurityContextHelper.isAdmin() && doctorId != null
+                ? doctorId
+                : SecurityContextHelper.getCurrentUserId();
         if (targetDoctorId == null) {
             return Result.error("需要指定医生ID");
         }
@@ -80,17 +81,25 @@ public class FollowUpController {
 
     @GetMapping("/{id}")
     public Result<FollowUp> getById(@PathVariable Long id) {
-        return Result.success(followUpService.getById(id));
+        FollowUp followUp = followUpService.getById(id);
+        String error = checkPatientAccess(followUp != null ? followUp.getPatientId() : null);
+        if (error != null) return Result.error(403, error);
+        return Result.success(followUp);
     }
 
     @PostMapping
     public Result<Void> save(@RequestBody FollowUp followUp) {
+        String error = checkPatientAccess(followUp.getPatientId());
+        if (error != null) return Result.error(403, error);
         followUpService.save(followUp);
         return Result.success();
     }
 
     @PutMapping("/{id}")
     public Result<Void> update(@PathVariable Long id, @RequestBody FollowUp followUp) {
+        FollowUp existing = followUpService.getById(id);
+        String error = checkPatientAccess(existing != null ? existing.getPatientId() : followUp.getPatientId());
+        if (error != null) return Result.error(403, error);
         followUp.setId(id);
         followUpService.save(followUp);
         return Result.success();
@@ -98,13 +107,29 @@ public class FollowUpController {
 
     @PutMapping("/{id}/status")
     public Result<Void> updateStatus(@PathVariable Long id, @RequestParam Integer status) {
+        FollowUp existing = followUpService.getById(id);
+        String error = checkPatientAccess(existing != null ? existing.getPatientId() : null);
+        if (error != null) return Result.error(403, error);
         followUpService.updateStatus(id, status);
         return Result.success();
     }
 
     @PutMapping("/{id}/cancel")
     public Result<Void> cancel(@PathVariable Long id) {
+        FollowUp existing = followUpService.getById(id);
+        String error = checkPatientAccess(existing != null ? existing.getPatientId() : null);
+        if (error != null) return Result.error(403, error);
         followUpService.cancel(id);
         return Result.success();
+    }
+
+    private String checkPatientAccess(Long patientId) {
+        if (patientId == null) {
+            return "记录不存在";
+        }
+        return permissionService.checkPatientAccessPermission(
+                SecurityContextHelper.getCurrentUserId(),
+                SecurityContextHelper.getCurrentRole(),
+                patientId);
     }
 }

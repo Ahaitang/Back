@@ -37,10 +37,14 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // 公开接口（无需认证）
                 .requestMatchers(
-                    "/api/v1/qmg/login",           // QMG 登录接口
-                    "/api/v1/qmg/register",        // QMG 注册接口
+                    "/api/v1/qmg/doctor/login",     // QMG 医生登录接口
+                    "/api/v1/qmg/doctor/register",   // QMG 医生注册接口
+                    "/api/v1/qmg/doctor/getByUsername", // QMG 获取医生信息（小程序用）
+                    "/api/v1/qmg/register/check-phone", // QMG 检查手机号
                     "/api/v1/neuroimmune/login",   // Neuroimmune 登录接口
                     "/api/v1/neuroimmune/register",// Neuroimmune 注册接口
+                    "/api/v1/neuroimmune/register/check-phone", // Neuroimmune 检查手机号
+                    "/api/v1/neuroimmune/relation/doctors", // 医生列表（患者绑定用）
                     "/api/v1/neuroimmune/import/*/template", // 导入模板下载（公开）
                     "/api/v1/super-admin/login",   // 超级管理员登录
                     "/actuator/health",            // 健康检查

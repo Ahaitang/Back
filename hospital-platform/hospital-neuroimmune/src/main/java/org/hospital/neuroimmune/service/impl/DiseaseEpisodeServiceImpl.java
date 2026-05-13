@@ -37,6 +37,9 @@ public class DiseaseEpisodeServiceImpl implements DiseaseEpisodeService {
         if (request.getPatientId() != null) {
             wrapper.eq(DiseaseEpisode::getPatientId, request.getPatientId());
         }
+        if (request.getDoctorId() != null) {
+            wrapper.apply("patient_id IN (SELECT patient_id FROM patient_doctor_relation WHERE doctor_id = {0} AND status = 1 AND bind_status = 1)", request.getDoctorId());
+        }
         if (request.getKeyword() != null && !request.getKeyword().isEmpty()) {
             wrapper.and(w -> w.like(DiseaseEpisode::getChiefComplaint, request.getKeyword())
                     .or().like(DiseaseEpisode::getDiagnosis, request.getKeyword()));

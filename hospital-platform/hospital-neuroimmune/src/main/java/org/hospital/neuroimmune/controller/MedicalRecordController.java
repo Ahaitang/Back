@@ -34,6 +34,8 @@ public class MedicalRecordController {
         Long currentUserId = SecurityContextHelper.getCurrentUserId();
 
         if (patientId != null) {
+            String error = checkPatientAccess(patientId);
+            if (error != null) return Result.error(403, error);
             request.setPatientId(patientId);
             return Result.success(medicalRecordService.getList(request));
         }
@@ -54,17 +56,25 @@ public class MedicalRecordController {
 
     @GetMapping("/{id}")
     public Result<MedicalRecord> getById(@PathVariable Long id) {
-        return Result.success(medicalRecordService.getById(id));
+        MedicalRecord record = medicalRecordService.getById(id);
+        String error = checkPatientAccess(record != null ? record.getPatientId() : null);
+        if (error != null) return Result.error(403, error);
+        return Result.success(record);
     }
 
     @PostMapping
     public Result<Void> save(@RequestBody MedicalRecord record) {
+        String error = checkPatientAccess(record.getPatientId());
+        if (error != null) return Result.error(403, error);
         medicalRecordService.save(record);
         return Result.success();
     }
 
     @PutMapping("/{id}")
     public Result<Void> update(@PathVariable Long id, @RequestBody MedicalRecord record) {
+        MedicalRecord existing = medicalRecordService.getById(id);
+        String error = checkPatientAccess(existing != null ? existing.getPatientId() : record.getPatientId());
+        if (error != null) return Result.error(403, error);
         record.setId(id);
         medicalRecordService.save(record);
         return Result.success();
@@ -72,13 +82,29 @@ public class MedicalRecordController {
 
     @PutMapping("/{id}/status")
     public Result<Void> updateStatus(@PathVariable Long id, @RequestParam Integer status) {
+        MedicalRecord existing = medicalRecordService.getById(id);
+        String error = checkPatientAccess(existing != null ? existing.getPatientId() : null);
+        if (error != null) return Result.error(403, error);
         medicalRecordService.updateStatus(id, status);
         return Result.success();
     }
 
     @PutMapping("/{id}/cancel")
     public Result<Void> cancel(@PathVariable Long id) {
+        MedicalRecord existing = medicalRecordService.getById(id);
+        String error = checkPatientAccess(existing != null ? existing.getPatientId() : null);
+        if (error != null) return Result.error(403, error);
         medicalRecordService.cancel(id);
         return Result.success();
+    }
+
+    private String checkPatientAccess(Long patientId) {
+        if (patientId == null) {
+            return "记录不存在";
+        }
+        return permissionService.checkPatientAccessPermission(
+                SecurityContextHelper.getCurrentUserId(),
+                SecurityContextHelper.getCurrentRole(),
+                patientId);
     }
 }

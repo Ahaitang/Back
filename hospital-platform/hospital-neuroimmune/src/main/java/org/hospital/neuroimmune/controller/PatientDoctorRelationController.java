@@ -1,8 +1,10 @@
 package org.hospital.neuroimmune.controller;
 
 import org.hospital.common.model.Result;
+import org.hospital.common.security.SecurityContextHelper;
 import org.hospital.neuroimmune.entity.PatientDoctorRelation;
 import org.hospital.neuroimmune.entity.Patient;
+import org.hospital.neuroimmune.model.BindDoctorRequest;
 import org.hospital.neuroimmune.service.PatientDoctorRelationService;
 import org.hospital.neuroimmune.service.PatientService;
 import org.hospital.neuroimmune.service.DoctorService;
@@ -32,13 +34,15 @@ public class PatientDoctorRelationController {
      * 患者绑定医生
      */
     @PostMapping("/bind")
-    public Result<Map<String, Object>> bindDoctor(
-            @RequestParam Long patientId,
-            @RequestParam Long doctorId,
-            @RequestParam(required = false, defaultValue = "patient") String bindMethod,
-            @RequestParam(required = false) String remark) {
+    public Result<Map<String, Object>> bindDoctor(@RequestBody BindDoctorRequest request) {
+        String error = checkRelationAccess(request.getPatientId(), request.getDoctorId());
+        if (error != null) return Result.error(403, error);
 
-        boolean success = relationService.bindDoctor(patientId, doctorId, bindMethod, remark);
+        boolean success = relationService.bindDoctor(
+                request.getPatientId(),
+                request.getDoctorId(),
+                request.getBindMethod() != null ? request.getBindMethod() : "patient",
+                request.getRemark());
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", success);
@@ -53,6 +57,9 @@ public class PatientDoctorRelationController {
     @PostMapping("/unbind")
     public Result<Map<String, Object>> unbind(@RequestBody Map<String, Object> params) {
         Long id = Long.parseLong(params.get("id").toString());
+        PatientDoctorRelation relation = relationService.getById(id);
+        String error = checkRelationAccess(relation);
+        if (error != null) return Result.error(403, error);
 
         boolean success = relationService.unbind(id);
 
@@ -78,6 +85,8 @@ public class PatientDoctorRelationController {
             result.put("message", "未找到绑定关系");
             return Result.success(result);
         }
+        String error = checkRelationAccess(relation);
+        if (error != null) return Result.error(403, error);
 
         boolean success = relationService.unbind(relation.getId());
 
@@ -93,6 +102,9 @@ public class PatientDoctorRelationController {
      */
     @PostMapping("/unbind-patient/{patientId}")
     public Result<Map<String, Object>> unbindPatient(@PathVariable Long patientId) {
+        String error = checkPatientAccess(patientId);
+        if (error != null) return Result.error(403, error);
+
         boolean success = relationService.unbindPatient(patientId);
 
         Map<String, Object> result = new HashMap<>();
@@ -103,11 +115,15 @@ public class PatientDoctorRelationController {
     }
 
     /**
-     * 获取患者当前绑定的医生
+     * 获取患者当前绑定的医生（包括审核状态）
+     * bindStatus: 0-待审核, 1-已确认, 2-已拒绝, null-未绑定
      */
     @GetMapping("/patient/{patientId}/doctor")
     public Result<PatientDoctorRelation> getPatientDoctor(@PathVariable Long patientId) {
-        PatientDoctorRelation relation = relationService.getActiveDoctor(patientId);
+        String error = checkPatientAccess(patientId);
+        if (error != null) return Result.error(403, error);
+
+        PatientDoctorRelation relation = relationService.getLatestRelation(patientId);
         return Result.success(relation);
     }
 
@@ -116,6 +132,9 @@ public class PatientDoctorRelationController {
      */
     @GetMapping("/doctor/{doctorId}/patients")
     public Result<List<PatientDoctorRelation>> getDoctorPatients(@PathVariable Long doctorId) {
+        String error = checkDoctorAccess(doctorId);
+        if (error != null) return Result.error(403, error);
+
         List<PatientDoctorRelation> relations = relationService.getActivePatientsByDoctor(doctorId);
         return Result.success(relations);
     }
@@ -125,6 +144,9 @@ public class PatientDoctorRelationController {
      */
     @GetMapping("/doctor/{doctorId}/patient-details")
     public Result<List<Map<String, Object>>> getDoctorPatientDetails(@PathVariable Long doctorId) {
+        String error = checkDoctorAccess(doctorId);
+        if (error != null) return Result.error(403, error);
+
         List<PatientDoctorRelation> relations = relationService.getActivePatientsByDoctor(doctorId);
 
         List<Map<String, Object>> result = relations.stream().map(relation -> {
@@ -157,6 +179,9 @@ public class PatientDoctorRelationController {
      */
     @GetMapping("/patient/{patientId}/history")
     public Result<List<PatientDoctorRelation>> getPatientHistory(@PathVariable Long patientId) {
+        String error = checkPatientAccess(patientId);
+        if (error != null) return Result.error(403, error);
+
         List<PatientDoctorRelation> relations = relationService.getBindHistory(patientId);
         return Result.success(relations);
     }
@@ -169,6 +194,9 @@ public class PatientDoctorRelationController {
             @RequestParam(required = false) String patientName,
             @RequestParam(required = false) String doctorName,
             @RequestParam(required = false) String status) {
+        if (!SecurityContextHelper.isAdmin()) {
+            return Result.error(403, "只有管理员可以查看全部绑定关系");
+        }
         List<PatientDoctorRelation> relations = relationService.getList(patientName, doctorName, status);
         return Result.success(relations);
     }
@@ -178,16 +206,20 @@ public class PatientDoctorRelationController {
      */
     @GetMapping("/doctor/{doctorId}/count")
     public Result<Long> countDoctorPatients(@PathVariable Long doctorId) {
+        String error = checkDoctorAccess(doctorId);
+        if (error != null) return Result.error(403, error);
+
         Long count = relationService.countPatientsByDoctor(doctorId);
         return Result.success(count);
     }
 
     /**
-     * 获取所有医生列表（供患者选择）
+     * 获取所有医生列表（供患者选择绑定）
+     * 只返回有 DOCTOR 权限的医生
      */
     @GetMapping("/doctors")
     public Result<List<Doctor>> getDoctorList() {
-        PageResult<Doctor> pageResult = doctorService.getList(new PageRequest());
+        PageResult<Doctor> pageResult = doctorService.getDoctorList(new PageRequest());
         return Result.success(pageResult.getList());
     }
 
@@ -197,6 +229,8 @@ public class PatientDoctorRelationController {
     @GetMapping("/{id}")
     public Result<PatientDoctorRelation> getById(@PathVariable Long id) {
         PatientDoctorRelation relation = relationService.getById(id);
+        String error = checkRelationAccess(relation);
+        if (error != null) return Result.error(403, error);
         return Result.success(relation);
     }
 
@@ -205,6 +239,9 @@ public class PatientDoctorRelationController {
      */
     @GetMapping("/doctor/{doctorId}/pending")
     public Result<List<Map<String, Object>>> getPendingPatients(@PathVariable Long doctorId) {
+        String error = checkDoctorAccess(doctorId);
+        if (error != null) return Result.error(403, error);
+
         List<PatientDoctorRelation> relations = relationService.getPendingRelationsByDoctor(doctorId);
         return Result.success(buildPatientDetails(relations));
     }
@@ -214,6 +251,9 @@ public class PatientDoctorRelationController {
      */
     @GetMapping("/doctor/{doctorId}/confirmed")
     public Result<List<Map<String, Object>>> getConfirmedPatients(@PathVariable Long doctorId) {
+        String error = checkDoctorAccess(doctorId);
+        if (error != null) return Result.error(403, error);
+
         List<PatientDoctorRelation> relations = relationService.getConfirmedRelationsByDoctor(doctorId);
         return Result.success(buildPatientDetails(relations));
     }
@@ -223,6 +263,9 @@ public class PatientDoctorRelationController {
      */
     @GetMapping("/doctor/{doctorId}/rejected")
     public Result<List<Map<String, Object>>> getRejectedPatients(@PathVariable Long doctorId) {
+        String error = checkDoctorAccess(doctorId);
+        if (error != null) return Result.error(403, error);
+
         List<PatientDoctorRelation> relations = relationService.getRejectedRelationsByDoctor(doctorId);
         return Result.success(buildPatientDetails(relations));
     }
@@ -232,6 +275,10 @@ public class PatientDoctorRelationController {
      */
     @PutMapping("/{id}/confirm")
     public Result<Void> confirmRelation(@PathVariable Long id) {
+        PatientDoctorRelation relation = relationService.getById(id);
+        String error = checkRelationAccess(relation);
+        if (error != null) return Result.error(403, error);
+
         boolean success = relationService.confirmRelation(id);
         if (success) {
             return Result.success(null, "绑定已确认");
@@ -244,6 +291,10 @@ public class PatientDoctorRelationController {
      */
     @PutMapping("/{id}/reject")
     public Result<Void> rejectRelation(@PathVariable Long id) {
+        PatientDoctorRelation relation = relationService.getById(id);
+        String error = checkRelationAccess(relation);
+        if (error != null) return Result.error(403, error);
+
         boolean success = relationService.rejectRelation(id);
         if (success) {
             return Result.success(null, "绑定已拒绝");
@@ -276,5 +327,59 @@ public class PatientDoctorRelationController {
 
             return item;
         }).collect(Collectors.toList());
+    }
+
+    private String checkRelationAccess(PatientDoctorRelation relation) {
+        if (relation == null) {
+            return "绑定关系不存在";
+        }
+        return checkRelationAccess(relation.getPatientId(), relation.getDoctorId());
+    }
+
+    private String checkRelationAccess(Long patientId, Long doctorId) {
+        if (SecurityContextHelper.isAdmin()) {
+            return null;
+        }
+        Long currentUserId = SecurityContextHelper.getCurrentUserId();
+        if (currentUserId == null) {
+            return "用户信息获取失败";
+        }
+        if (SecurityContextHelper.isPatient()) {
+            return patientId != null && patientId.equals(currentUserId) ? null : "无权操作其他患者绑定";
+        }
+        if (SecurityContextHelper.isDoctor()) {
+            return doctorId != null && doctorId.equals(currentUserId) ? null : "无权操作其他医生绑定";
+        }
+        return "无权操作绑定关系";
+    }
+
+    private String checkPatientAccess(Long patientId) {
+        if (SecurityContextHelper.isAdmin()) {
+            return null;
+        }
+        Long currentUserId = SecurityContextHelper.getCurrentUserId();
+        if (currentUserId == null) {
+            return "用户信息获取失败";
+        }
+        if (SecurityContextHelper.isPatient()) {
+            return patientId != null && patientId.equals(currentUserId) ? null : "无权查看其他患者绑定";
+        }
+        if (SecurityContextHelper.isDoctor()) {
+            List<PatientDoctorRelation> relations = relationService.getActivePatientsByDoctor(currentUserId);
+            boolean hasAccess = relations.stream().anyMatch(r -> r.getPatientId().equals(patientId));
+            return hasAccess ? null : "无权查看未绑定患者信息";
+        }
+        return "无权访问绑定信息";
+    }
+
+    private String checkDoctorAccess(Long doctorId) {
+        if (SecurityContextHelper.isAdmin()) {
+            return null;
+        }
+        Long currentUserId = SecurityContextHelper.getCurrentUserId();
+        if (currentUserId == null) {
+            return "用户信息获取失败";
+        }
+        return doctorId != null && doctorId.equals(currentUserId) ? null : "无权查看其他医生的患者";
     }
 }

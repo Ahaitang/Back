@@ -3,6 +3,7 @@ package org.hospital.neuroimmune.controller;
 import org.hospital.common.model.Result;
 import org.hospital.common.model.PageRequest;
 import org.hospital.common.model.PageResult;
+import org.hospital.common.security.SecurityContextHelper;
 import org.hospital.common.security.UserInfo;
 import org.hospital.neuroimmune.entity.Doctor;
 import org.hospital.neuroimmune.service.DoctorService;
@@ -60,6 +61,9 @@ public class NeuroimmuneDoctorController {
      */
     @GetMapping("/admins")
     public Result<PageResult<Doctor>> adminList(PageRequest request) {
+        if (!SecurityContextHelper.isAdmin()) {
+            return Result.error(403, "只有管理员可以查看管理员列表");
+        }
         return Result.success(doctorService.getAdminList(request));
     }
 
@@ -70,13 +74,23 @@ public class NeuroimmuneDoctorController {
 
     @PostMapping
     public Result<Void> save(@RequestBody Doctor doctor) {
+        if (!SecurityContextHelper.isAdmin()) {
+            return Result.error(403, "只有管理员可以创建医生");
+        }
         doctorService.save(doctor);
         return Result.success();
     }
 
     @PutMapping("/{id}")
     public Result<Void> update(@PathVariable Long id, @RequestBody Doctor doctor) {
+        if (!SecurityContextHelper.isAdmin() && !id.equals(SecurityContextHelper.getCurrentUserId())) {
+            return Result.error(403, "无权修改其他医生信息");
+        }
         doctor.setId(id);
+        doctor.setPassword(null);
+        if (!SecurityContextHelper.isAdmin()) {
+            doctor.setLevel(null);
+        }
         doctorService.save(doctor);
         return Result.success();
     }
@@ -103,7 +117,7 @@ public class NeuroimmuneDoctorController {
         // 使用 PermissionService 检查权限
         String error = permissionService.checkRoleUpdatePermission(userInfo.getUserId(), id, roleCodes);
         if (error != null) {
-            return Result.error(error);
+            return Result.error(403, error);
         }
 
         // 更新角色和等级
@@ -126,6 +140,9 @@ public class NeuroimmuneDoctorController {
 
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
+        if (!SecurityContextHelper.isAdmin()) {
+            return Result.error(403, "只有管理员可以删除医生");
+        }
         // 逻辑删除，会自动解绑患者关系
         doctorService.delete(id);
         return Result.success();

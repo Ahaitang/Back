@@ -53,17 +53,25 @@ public class MedicationController {
 
     @GetMapping("/{id}")
     public Result<Medication> getById(@PathVariable Long id) {
-        return Result.success(medicationService.getById(id));
+        Medication medication = medicationService.getById(id);
+        String error = checkPatientAccess(medication != null ? medication.getPatientId() : null);
+        if (error != null) return Result.error(403, error);
+        return Result.success(medication);
     }
 
     @PostMapping
     public Result<Void> save(@RequestBody Medication medication) {
+        String error = checkPatientAccess(medication.getPatientId());
+        if (error != null) return Result.error(403, error);
         medicationService.save(medication);
         return Result.success();
     }
 
     @PutMapping("/{id}")
     public Result<Void> update(@PathVariable Long id, @RequestBody Medication medication) {
+        Medication existing = medicationService.getById(id);
+        String error = checkPatientAccess(existing != null ? existing.getPatientId() : medication.getPatientId());
+        if (error != null) return Result.error(403, error);
         medication.setId(id);
         medicationService.save(medication);
         return Result.success();
@@ -71,13 +79,29 @@ public class MedicationController {
 
     @PutMapping("/{id}/status")
     public Result<Void> updateStatus(@PathVariable Long id, @RequestParam Integer status) {
+        Medication existing = medicationService.getById(id);
+        String error = checkPatientAccess(existing != null ? existing.getPatientId() : null);
+        if (error != null) return Result.error(403, error);
         medicationService.updateStatus(id, status);
         return Result.success();
     }
 
     @PutMapping("/{id}/cancel")
     public Result<Void> cancel(@PathVariable Long id) {
+        Medication existing = medicationService.getById(id);
+        String error = checkPatientAccess(existing != null ? existing.getPatientId() : null);
+        if (error != null) return Result.error(403, error);
         medicationService.cancel(id);
         return Result.success();
+    }
+
+    private String checkPatientAccess(Long patientId) {
+        if (patientId == null) {
+            return "记录不存在";
+        }
+        return permissionService.checkPatientAccessPermission(
+                SecurityContextHelper.getCurrentUserId(),
+                SecurityContextHelper.getCurrentRole(),
+                patientId);
     }
 }

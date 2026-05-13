@@ -14,7 +14,9 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetAddress;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,6 +31,8 @@ import java.util.Map;
 @RequestMapping("/api/v1/ocr")
 @CrossOrigin
 public class OcrController {
+
+    private static final long MAX_DOWNLOAD_SIZE = 10 * 1024 * 1024;
 
     @Autowired(required = false)
     private BaiduOcrService ocrService;
@@ -62,31 +66,30 @@ public class OcrController {
             StringBuilder allText = new StringBuilder();
             List<String> errors = new ArrayList<>();
 
-            for (String imageUrl : images) {
+            for (int i = 0; i < images.size(); i++) {
+                String imageUrl = images.get(i);
                 try {
-                    // 从URL下载图片
                     byte[] imageData = downloadImage(imageUrl);
                     if (imageData == null || imageData.length == 0) {
-                        errors.add("无法下载图片: " + imageUrl);
+                        errors.add("第 " + (i + 1) + " 张图片下载失败");
                         continue;
                     }
 
-                    // 创建临时 MultipartFile
                     MultipartFile tempFile = createTempFile(imageData, imageUrl);
 
-                    // 调用 OCR 服务 - 使用高精度通用OCR识别病历
                     OcrResult result = ocrService.accurateBasic(tempFile);
 
                     if (result != null && result.isSuccess()) {
                         if (allText.length() > 0) {
-                            allText.append("\n\n--- 第 " + (images.indexOf(imageUrl) + 1) + " 张图片 ---\n\n");
+                            allText.append("\n\n--- 第 " + (i + 1) + " 张图片 ---\n\n");
                         }
                         allText.append(result.getFullText());
                     } else {
-                        errors.add("图片识别失败: " + (result != null ? result.getErrorMsg() : "未知错误"));
+                        errors.add("第 " + (i + 1) + " 张图片识别失败");
                     }
                 } catch (Exception e) {
-                    errors.add("处理图片失败: " + e.getMessage());
+                    log.warn("处理OCR图片失败: index={}", i + 1, e);
+                    errors.add("第 " + (i + 1) + " 张图片处理失败");
                 }
             }
 
@@ -100,7 +103,7 @@ public class OcrController {
             return Result.success(data);
         } catch (Exception e) {
             log.error("OCR解析失败", e);
-            return Result.error("解析失败: " + e.getMessage());
+            return Result.error("解析失败，请稍后重试");
         }
     }
 
@@ -108,9 +111,10 @@ public class OcrController {
      * 从URL下载图片
      */
     private byte[] downloadImage(String imageUrl) {
+        HttpURLConnection connection = null;
         try {
-            URL url = new URL(imageUrl);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            URL url = validateImageUrl(imageUrl);
+            connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
             connection.setConnectTimeout(10000);
             connection.setReadTimeout(30000);
@@ -120,21 +124,69 @@ public class OcrController {
                 return null;
             }
 
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            InputStream is = connection.getInputStream();
-            byte[] buffer = new byte[4096];
-            int len;
-            while ((len = is.read(buffer)) != -1) {
-                baos.write(buffer, 0, len);
+            String contentType = connection.getContentType();
+            if (contentType == null || !contentType.toLowerCase().startsWith("image/")) {
+                log.warn("OCR图片下载被拒绝，Content-Type不支持: {}", contentType);
+                return null;
             }
-            is.close();
-            connection.disconnect();
+
+            long contentLength = connection.getContentLengthLong();
+            if (contentLength > MAX_DOWNLOAD_SIZE) {
+                log.warn("OCR图片下载被拒绝，文件过大: {} bytes", contentLength);
+                return null;
+            }
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            try (InputStream is = connection.getInputStream()) {
+                byte[] buffer = new byte[4096];
+                int len;
+                while ((len = is.read(buffer)) != -1) {
+                    if (baos.size() + len > MAX_DOWNLOAD_SIZE) {
+                        log.warn("OCR图片下载被拒绝，流大小超过限制");
+                        return null;
+                    }
+                    baos.write(buffer, 0, len);
+                }
+            }
 
             return baos.toByteArray();
-        } catch (Exception e) {
-            log.error("下载图片异常: {}", imageUrl, e);
+        } catch (IllegalArgumentException e) {
+            log.warn("OCR图片URL被拒绝: {}", e.getMessage());
             return null;
+        } catch (Exception e) {
+            log.error("下载OCR图片异常", e);
+            return null;
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
         }
+    }
+
+    private URL validateImageUrl(String imageUrl) throws Exception {
+        URI uri = URI.create(imageUrl);
+        String scheme = uri.getScheme();
+        if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
+            throw new IllegalArgumentException("仅支持HTTP/HTTPS图片地址");
+        }
+        if (uri.getUserInfo() != null) {
+            throw new IllegalArgumentException("图片地址不能包含用户信息");
+        }
+        String host = uri.getHost();
+        if (host == null || host.isBlank()) {
+            throw new IllegalArgumentException("图片地址缺少主机名");
+        }
+        InetAddress[] addresses = InetAddress.getAllByName(host);
+        for (InetAddress address : addresses) {
+            if (address.isAnyLocalAddress()
+                    || address.isLoopbackAddress()
+                    || address.isLinkLocalAddress()
+                    || address.isSiteLocalAddress()
+                    || address.isMulticastAddress()) {
+                throw new IllegalArgumentException("图片地址不可访问内部网络");
+            }
+        }
+        return uri.toURL();
     }
 
     /**

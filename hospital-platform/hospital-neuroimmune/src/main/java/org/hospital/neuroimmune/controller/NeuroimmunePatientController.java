@@ -74,13 +74,16 @@ public class NeuroimmunePatientController {
                 SecurityContextHelper.getCurrentRole(),
                 id);
         if (error != null) {
-            return Result.error(error);
+            return Result.error(403, error);
         }
         return Result.success(patientService.getById(id));
     }
 
     @PostMapping
     public Result<Long> save(@RequestBody Patient patient) {
+        if (SecurityContextHelper.isPatient()) {
+            return Result.error(403, "无权创建患者信息");
+        }
         try {
             patientService.save(patient);
             return Result.success(patient.getId());
@@ -91,13 +94,24 @@ public class NeuroimmunePatientController {
 
     @PutMapping("/{id}")
     public Result<Void> update(@PathVariable Long id, @RequestBody Patient patient) {
+        String error = permissionService.checkPatientAccessPermission(
+                SecurityContextHelper.getCurrentUserId(),
+                SecurityContextHelper.getCurrentRole(),
+                id);
+        if (error != null) {
+            return Result.error(403, error);
+        }
         patient.setId(id);
+        patient.setPassword(null);
         patientService.save(patient);
         return Result.success();
     }
 
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
+        if (!SecurityContextHelper.isAdmin()) {
+            return Result.error(403, "只有管理员可以删除患者");
+        }
         patientService.delete(id);
         return Result.success();
     }

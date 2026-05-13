@@ -39,7 +39,7 @@ public class FollowUp extends BaseRecordEntity {
     private String outpatientTimeSlot;      // 时间段：morning/afternoon/evening
 
     // 住院时间
-    @JsonFormat(pattern = "yyyy-MM-dd")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime hospitalizationTime;
 
     // 随访检查类型（字典ID）

@@ -350,7 +350,19 @@ public class PatientServiceImpl implements PatientService {
             }
             patientMapper.insert(patient);
         } else {
-            patientMapper.updateById(patient);
+            // 检查是否有持久化字段需要更新（排除非持久化字段）
+            boolean hasPersistentFields = patient.getName() != null
+                    || patient.getGender() != null
+                    || patient.getBirthDate() != null
+                    || patient.getPhone() != null
+                    || patient.getPassword() != null
+                    || patient.getAvatar() != null
+                    || patient.getIdCard() != null
+                    || patient.getStatus() != null;
+
+            if (hasPersistentFields) {
+                patientMapper.updateById(patient);
+            }
         }
 
         // 同步疾病类型到 patient_disease 表

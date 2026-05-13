@@ -9,6 +9,8 @@ import org.hospital.common.model.PageResult;
 import org.hospital.neuroimmune.entity.FollowUp;
 import org.hospital.neuroimmune.mapper.FollowUpMapper;
 import org.hospital.neuroimmune.service.FollowUpService;
+import org.hospital.neuroimmune.service.PatientDoctorRelationService;
+import org.hospital.neuroimmune.entity.PatientDoctorRelation;
 import org.hospital.neuroimmune.util.EntityNameEnricher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
@@ -31,6 +33,9 @@ public class FollowUpServiceImpl implements FollowUpService {
 
     @Autowired
     private EntityNameEnricher nameEnricher;
+
+    @Autowired
+    private PatientDoctorRelationService relationService;
 
     @Override
     public PageResult<FollowUp> getList(PageRequest request) {
@@ -101,6 +106,13 @@ public class FollowUpServiceImpl implements FollowUpService {
     public void save(FollowUp followUp) {
         if (followUp.getStatus() == null) {
             followUp.setStatus(RecordStatus.ONGOING.getCode());
+        }
+        // 新增时，如果 doctorId 为空，自动从患者-医生关系中获取
+        if (followUp.getId() == null && followUp.getDoctorId() == null && followUp.getPatientId() != null) {
+            PatientDoctorRelation relation = relationService.getActiveDoctor(followUp.getPatientId());
+            if (relation != null) {
+                followUp.setDoctorId(relation.getDoctorId());
+            }
         }
         if (followUp.getId() == null) {
             followUpMapper.insert(followUp);

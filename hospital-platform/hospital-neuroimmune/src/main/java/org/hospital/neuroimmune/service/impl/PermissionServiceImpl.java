@@ -137,8 +137,11 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     public String checkPatientAccessPermission(Long userId, String role, Long patientId) {
-        if (userId == null || patientId == null) {
-            return null; // 无需检查
+        if (userId == null) {
+            return "用户信息获取失败";
+        }
+        if (patientId == null) {
+            return "记录不存在";
         }
 
         // 患者只能查看自己的信息
@@ -146,7 +149,16 @@ public class PermissionServiceImpl implements PermissionService {
             return "无权查看其他患者信息";
         }
 
-        // 医生和管理员可以查看所有患者
-        return null; // 允许
+        if ("doctor".equalsIgnoreCase(role)) {
+            List<PatientDoctorRelation> relations = relationService.getActivePatientsByDoctor(userId);
+            boolean hasAccess = relations.stream().anyMatch(r -> r.getPatientId().equals(patientId));
+            return hasAccess ? null : "无权查看未绑定患者信息";
+        }
+
+        if ("admin".equalsIgnoreCase(role)) {
+            return null;
+        }
+
+        return "无权访问该患者信息";
     }
 }

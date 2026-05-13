@@ -27,6 +27,12 @@ public interface PatientDoctorRelationService {
     PatientDoctorRelation getActiveDoctor(Long patientId);
 
     /**
+     * 获取患者最新的绑定关系（包括审核状态）
+     * 用于前端判断是否需要弹出选择弹窗
+     */
+    PatientDoctorRelation getLatestRelation(Long patientId);
+
+    /**
      * 批量获取患者的主治医生姓名
      * @param patientIds 患者ID列表
      * @return Map<patientId, doctorName>
@@ -119,4 +125,14 @@ public interface PatientDoctorRelationService {
      * 拒绝绑定关系
      */
     boolean rejectRelation(Long relationId);
+
+    /**
+     * 按绑定状态查询患者ID列表
+     */
+    List<Long> getPatientIdsByBindStatus(Integer bindStatus);
+
+    /**
+     * 查询有绑定关系记录的所有患者ID
+     */
+    List<Long> getAllPatientIdsWithRelation();
 }

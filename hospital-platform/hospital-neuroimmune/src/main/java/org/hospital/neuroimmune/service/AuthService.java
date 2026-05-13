@@ -1,6 +1,8 @@
 package org.hospital.neuroimmune.service;
 
 import org.hospital.common.model.LoginRequest;
+import org.hospital.common.model.PasswordRequest;
+import org.hospital.common.security.UserInfo;
 import org.hospital.neuroimmune.model.LoginResult;
 import org.hospital.neuroimmune.model.RegisterRequest;
 import org.hospital.neuroimmune.model.RegisterResult;
@@ -20,14 +22,7 @@ public interface AuthService {
      */
     LoginResult login(LoginRequest request);
 
-    /**
-     * 更新密码并移除Token
-     *
-     * @param userId 用户ID
-     * @param role 用户角色 (admin, doctor, patient)
-     * @param newPassword 新密码
-     */
-    void updatePasswordAndRemoveToken(Long userId, String role, String newPassword);
+    void updatePasswordAndRemoveToken(Long targetUserId, String targetRole, PasswordRequest request, UserInfo currentUser);
 
     /**
      * 患者注册

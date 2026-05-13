@@ -46,7 +46,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
 
         LambdaQueryWrapper<MedicalRecord> wrapper = new LambdaQueryWrapper<>();
         // 通过 patient_doctor_relation 关联查询医生管理的患者的病历
-        wrapper.apply("patient_id IN (SELECT patient_id FROM patient_doctor_relation WHERE doctor_id = {0} AND status = 1)", doctorId);
+        wrapper.apply("patient_id IN (SELECT patient_id FROM patient_doctor_relation WHERE doctor_id = {0} AND status = 1 AND bind_status = 1)", doctorId);
 
         if (request.getKeyword() != null && !request.getKeyword().isEmpty()) {
             String keyword = request.getKeyword();

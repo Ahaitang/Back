@@ -58,7 +58,12 @@ public class ScheduleServiceImpl implements ScheduleService {
         for (FollowUp fu : followUps) {
             ScheduleDTO.ScheduleItem item = new ScheduleDTO.ScheduleItem();
             item.setId(fu.getId());
-            item.setTime(formatTime(fu.getHospitalizationTime()));
+            // 时间显示：门诊显示时段，住院显示具体时间
+            if (fu.getOutpatientCycleType() != null) {
+                item.setTime(formatTimeSlot(fu.getOutpatientTimeSlot()));
+            } else {
+                item.setTime(formatTime(fu.getHospitalizationTime()));
+            }
             item.setWho("doctor".equals(role) ? fu.getPatientName() : fu.getDoctorName());
             item.setDate(formatDate(fu.getHospitalizationTime()));
             item.setType(fu.getFollowUpExamTypeName());
@@ -193,23 +198,85 @@ public class ScheduleServiceImpl implements ScheduleService {
         return getScheduleByDate(startDate, role, userId);
     }
 
+    /**
+     * 根据日期查询随访计划
+     * 同时考虑住院时间和门诊周期
+     */
     private List<FollowUp> getFollowUpsByDate(String date, String role, Long userId) {
         LocalDate queryDate = LocalDate.parse(date, DATE_FORMATTER);
         LocalDateTime startOfDay = queryDate.atStartOfDay();
         LocalDateTime endOfDay = queryDate.plusDays(1).atStartOfDay();
 
+        // 先获取所有随访记录
         LambdaQueryWrapper<FollowUp> wrapper = new LambdaQueryWrapper<>();
-        // 查询住院时间匹配的随访
-        wrapper.ge(FollowUp::getHospitalizationTime, startOfDay).lt(FollowUp::getHospitalizationTime, endOfDay);
-
         if ("doctor".equals(role) && userId != null) {
             wrapper.eq(FollowUp::getDoctorId, userId);
         } else if ("patient".equals(role) && userId != null) {
             wrapper.eq(FollowUp::getPatientId, userId);
         }
-
         wrapper.orderByAsc(FollowUp::getCreateTime);
-        return followUpMapper.selectList(wrapper);
+
+        List<FollowUp> allFollowUps = followUpMapper.selectList(wrapper);
+
+        // 筛选匹配当天日期的记录（住院时间或门诊周期）
+        return allFollowUps.stream()
+                .filter(fu -> isFollowUpOnDate(fu, queryDate, startOfDay, endOfDay))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 判断随访是否在指定日期
+     */
+    private boolean isFollowUpOnDate(FollowUp fu, LocalDate queryDate, LocalDateTime startOfDay, LocalDateTime endOfDay) {
+        // 住院时间匹配
+        if (fu.getHospitalizationTime() != null) {
+            LocalDateTime hospTime = fu.getHospitalizationTime();
+            if (!hospTime.isBefore(startOfDay) && hospTime.isBefore(endOfDay)) {
+                return true;
+            }
+        }
+
+        // 门诊周期匹配
+        if (fu.getOutpatientCycleType() != null && fu.getOutpatientCycleValue() != null) {
+            try {
+                int cycleValue = Integer.parseInt(fu.getOutpatientCycleValue());
+                switch (fu.getOutpatientCycleType()) {
+                    case "weekly":
+                        // 查询日期是周几（Java中周一=1，周日=7）
+                        int dayOfWeek = queryDate.getDayOfWeek().getValue();
+                        return dayOfWeek == cycleValue;
+                    case "monthly":
+                        // 查询日期是几号
+                        return queryDate.getDayOfMonth() == cycleValue;
+                    case "quarterly":
+                        // 每季度几号
+                        return queryDate.getDayOfMonth() == cycleValue;
+                    default:
+                        return false;
+                }
+            } catch (NumberFormatException e) {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * 格式化时间段
+     */
+    private String formatTimeSlot(String timeSlot) {
+        if (timeSlot == null) return "待定";
+        switch (timeSlot) {
+            case "morning":
+                return "上午";
+            case "afternoon":
+                return "下午";
+            case "evening":
+                return "晚间";
+            default:
+                return "待定";
+        }
     }
 
     private List<Medication> getMedicationsByDate(String date, String role, Long userId) {

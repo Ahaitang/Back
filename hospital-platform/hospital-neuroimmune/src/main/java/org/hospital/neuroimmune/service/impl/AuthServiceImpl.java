@@ -1,6 +1,7 @@
 package org.hospital.neuroimmune.service.impl;
 
 import org.hospital.common.model.LoginRequest;
+import org.hospital.common.model.PasswordRequest;
 import org.hospital.common.security.JwtUtil;
 import org.hospital.common.security.TokenStorage;
 import org.hospital.common.security.UserInfo;
@@ -80,16 +81,77 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void updatePasswordAndRemoveToken(Long userId, String role, String newPassword) {
+    public void updatePasswordAndRemoveToken(Long targetUserId, String targetRole, PasswordRequest request, UserInfo currentUser) {
+        if (targetUserId == null || targetRole == null || request == null || currentUser == null) {
+            throw new SecurityException("用户信息获取失败");
+        }
+        if (request.getPassword() == null || request.getPassword().isBlank()) {
+            throw new IllegalArgumentException("新密码不能为空");
+        }
+
+        String role = targetRole.toLowerCase();
+        boolean selfChange = targetUserId.equals(currentUser.getUserId())
+                && role.equalsIgnoreCase(currentUser.getRole());
+        if (selfChange) {
+            verifyOldPassword(targetUserId, role, request.getOldPassword());
+        } else {
+            verifyAdminPasswordChangePermission(currentUser, targetUserId, role);
+        }
+
         switch (role) {
             case "admin", "doctor" -> {
-                doctorService.updatePassword(userId, newPassword);
-                tokenStorage.removeToken(new UserInfo(userId, null, role, "neuroimmune"));
+                doctorService.updatePassword(targetUserId, request.getPassword());
+                tokenStorage.removeToken(new UserInfo(targetUserId, null, role, "neuroimmune"));
             }
             case "patient" -> {
-                patientService.updatePassword(userId, newPassword);
-                tokenStorage.removeToken(new UserInfo(userId, null, "patient", "neuroimmune"));
+                patientService.updatePassword(targetUserId, request.getPassword());
+                tokenStorage.removeToken(new UserInfo(targetUserId, null, "patient", "neuroimmune"));
             }
+            default -> throw new IllegalArgumentException("无效的角色类型");
+        }
+    }
+
+    private void verifyOldPassword(Long userId, String role, String oldPassword) {
+        if (oldPassword == null || oldPassword.isBlank()) {
+            throw new IllegalArgumentException("请输入原密码");
+        }
+        String storedPassword = switch (role) {
+            case "admin", "doctor" -> {
+                Doctor doctor = doctorService.getById(userId);
+                yield doctor != null ? doctor.getPassword() : null;
+            }
+            case "patient" -> {
+                Patient patient = patientService.getById(userId);
+                yield patient != null ? patient.getPassword() : null;
+            }
+            default -> null;
+        };
+        if (storedPassword == null || !PasswordUtil.matches(oldPassword, storedPassword)) {
+            throw new IllegalArgumentException("原密码错误");
+        }
+    }
+
+    private void verifyAdminPasswordChangePermission(UserInfo currentUser, Long targetUserId, String targetRole) {
+        if (!"admin".equalsIgnoreCase(currentUser.getRole())) {
+            throw new SecurityException("无权修改其他用户密码");
+        }
+
+        if ("patient".equalsIgnoreCase(targetRole)) {
+            if (patientService.getById(targetUserId) == null) {
+                throw new IllegalArgumentException("用户不存在");
+            }
+            return;
+        }
+
+        Doctor currentAdmin = doctorService.getById(currentUser.getUserId());
+        Doctor targetUser = doctorService.getById(targetUserId);
+        if (currentAdmin == null || targetUser == null) {
+            throw new IllegalArgumentException("用户不存在");
+        }
+        Integer currentLevel = currentAdmin.getLevel() == null ? 999 : currentAdmin.getLevel();
+        Integer targetLevel = targetUser.getLevel() == null ? 999 : targetUser.getLevel();
+        if (currentLevel >= targetLevel) {
+            throw new SecurityException("无权限修改同级或更高等级用户密码");
         }
     }
 
@@ -165,9 +227,17 @@ public class AuthServiceImpl implements AuthService {
         }
 
         if (status.equals(Patient.STATUS_PENDING)) {
-            return LoginResult.fail("账户等待医生确认，请稍后再试");
+            // 待审核的患者允许登录，登录后可查看审核状态
+            UserInfo userInfo = new UserInfo(patient.getId(), patient.getName(), "patient", "neuroimmune");
+            String token = jwtUtil.generateToken(userInfo);
+            tokenStorage.storeToken(userInfo, token);
+            return LoginResult.ok(token, patient, "patient");
         } else if (status.equals(Patient.STATUS_REJECTED)) {
-            return LoginResult.fail("注册已被拒绝，请重新选择医生注册");
+            // 被拒绝的患者允许登录，登录后可重新选择医生申请绑定
+            UserInfo userInfo = new UserInfo(patient.getId(), patient.getName(), "patient", "neuroimmune");
+            String token = jwtUtil.generateToken(userInfo);
+            tokenStorage.storeToken(userInfo, token);
+            return LoginResult.ok(token, patient, "patient");
         } else if (status.equals(Patient.STATUS_INACTIVE)) {
             return LoginResult.fail("账户已被禁用");
         } else if (status.equals(Patient.STATUS_ACTIVE)) {
@@ -200,7 +270,7 @@ public class AuthServiceImpl implements AuthService {
             return RegisterResult.fail("该手机号已注册");
         }
 
-        // 2. 创建患者（状态为pending）
+        // 2. 创建患者
         Patient patient = new Patient();
         patient.setPhone(request.getPhone());
         patient.setPassword(PasswordUtil.encode(request.getPassword()));
@@ -208,27 +278,37 @@ public class AuthServiceImpl implements AuthService {
         patient.setGender(request.getGender());
         patient.setBirthDate(request.getBirthDate() != null ?
             request.getBirthDate().atStartOfDay() : null);
-        patient.setStatus(Patient.STATUS_PENDING);
+
+        // 如果有医生ID，状态为pending等待医生确认；否则直接激活
+        if (request.getDoctorId() != null) {
+            patient.setStatus(Patient.STATUS_PENDING);
+        } else {
+            patient.setStatus(Patient.STATUS_ACTIVE);
+        }
 
         // 使用现有的 patientService.save() 方法
         patientService.save(patient);
 
-        // 3. 创建待确认的绑定关系
-        PatientDoctorRelation relation = new PatientDoctorRelation();
-        relation.setPatientId(patient.getId());
-        relation.setDoctorId(request.getDoctorId());
-        relation.setRelationType("primary");
-        relation.setStatus(PatientDoctorRelation.STATUS_ACTIVE);
-        relation.setBindStatus(PatientDoctorRelation.BIND_STATUS_PENDING);
-        relation.setBindMethod("patient");
-        relation.setRequestTime(LocalDateTime.now());
+        // 3. 如果有医生ID，创建待确认的绑定关系
+        if (request.getDoctorId() != null) {
+            PatientDoctorRelation relation = new PatientDoctorRelation();
+            relation.setPatientId(patient.getId());
+            relation.setDoctorId(request.getDoctorId());
+            relation.setRelationType("primary");
+            relation.setStatus(PatientDoctorRelation.STATUS_ACTIVE);
+            relation.setBindStatus(PatientDoctorRelation.BIND_STATUS_PENDING);
+            relation.setBindMethod("patient");
+            relation.setRequestTime(LocalDateTime.now());
 
-        relationService.createPendingRelation(relation);
-
-        logger.info("患者注册成功: phone={}, patientId={}, doctorId={}",
-            request.getPhone(), patient.getId(), request.getDoctorId());
-
-        return RegisterResult.ok(patient.getId(), "pending");
+            relationService.createPendingRelation(relation);
+            logger.info("患者注册成功（待确认）: phone={}, patientId={}, doctorId={}",
+                request.getPhone(), patient.getId(), request.getDoctorId());
+            return RegisterResult.ok(patient.getId(), "pending");
+        } else {
+            logger.info("患者注册成功（直接激活）: phone={}, patientId={}",
+                request.getPhone(), patient.getId());
+            return RegisterResult.ok(patient.getId(), "active");
+        }
     }
 
     @Override

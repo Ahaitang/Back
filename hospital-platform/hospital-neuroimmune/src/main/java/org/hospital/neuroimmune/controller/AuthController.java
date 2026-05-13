@@ -5,6 +5,7 @@ import org.hospital.common.audit.OperationType;
 import org.hospital.common.model.Result;
 import org.hospital.common.model.LoginRequest;
 import org.hospital.common.model.PasswordRequest;
+import org.hospital.common.security.SecurityContextHelper;
 import org.hospital.common.security.TokenStorage;
 import org.hospital.common.security.UserInfo;
 import org.hospital.neuroimmune.model.LoginResult;
@@ -72,9 +73,8 @@ public class AuthController {
      */
     @AuditLog(operation = OperationType.CHANGE_PASSWORD, module = "认证", description = "修改管理员密码", logParams = false)
     @PutMapping("/admin/{id}/password")
-    public Result<Void> updateAdminPassword(@PathVariable Long id, @RequestBody PasswordRequest request) {
-        authService.updatePasswordAndRemoveToken(id, "admin", request.getPassword());
-        return Result.success();
+    public Result<Void> updateAdminPassword(@PathVariable Long id, @Valid @RequestBody PasswordRequest request) {
+        return updatePassword(id, "admin", request);
     }
 
     /**
@@ -82,9 +82,8 @@ public class AuthController {
      */
     @AuditLog(operation = OperationType.CHANGE_PASSWORD, module = "认证", description = "修改患者密码", logParams = false)
     @PutMapping("/patients/{id}/password")
-    public Result<Void> updatePatientPassword(@PathVariable Long id, @RequestBody PasswordRequest request) {
-        authService.updatePasswordAndRemoveToken(id, "patient", request.getPassword());
-        return Result.success();
+    public Result<Void> updatePatientPassword(@PathVariable Long id, @Valid @RequestBody PasswordRequest request) {
+        return updatePassword(id, "patient", request);
     }
 
     /**
@@ -92,9 +91,19 @@ public class AuthController {
      */
     @AuditLog(operation = OperationType.CHANGE_PASSWORD, module = "认证", description = "修改医生密码", logParams = false)
     @PutMapping("/doctors/{id}/password")
-    public Result<Void> updateDoctorPassword(@PathVariable Long id, @RequestBody PasswordRequest request) {
-        authService.updatePasswordAndRemoveToken(id, "doctor", request.getPassword());
-        return Result.success();
+    public Result<Void> updateDoctorPassword(@PathVariable Long id, @Valid @RequestBody PasswordRequest request) {
+        return updatePassword(id, "doctor", request);
+    }
+
+    private Result<Void> updatePassword(Long id, String role, PasswordRequest request) {
+        try {
+            authService.updatePasswordAndRemoveToken(id, role, request, SecurityContextHelper.getCurrentUser());
+            return Result.success();
+        } catch (SecurityException e) {
+            return Result.error(403, e.getMessage());
+        } catch (IllegalArgumentException e) {
+            return Result.error(400, e.getMessage());
+        }
     }
 
     /**

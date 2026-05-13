@@ -3,9 +3,11 @@ package org.hospital.neuroimmune.controller;
 import org.hospital.common.model.Result;
 import org.hospital.common.model.PageRequest;
 import org.hospital.common.model.PageResult;
+import org.hospital.common.security.SecurityContextHelper;
 import org.hospital.common.security.UserInfo;
 import org.hospital.neuroimmune.entity.DiseaseEpisode;
 import org.hospital.neuroimmune.service.DiseaseEpisodeService;
+import org.hospital.neuroimmune.service.PermissionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +22,9 @@ public class DiseaseEpisodeController {
     @Autowired
     private DiseaseEpisodeService diseaseEpisodeService;
 
+    @Autowired
+    private PermissionService permissionService;
+
     /**
      * 获取发作记录列表
      * 支持参数：
@@ -33,6 +38,8 @@ public class DiseaseEpisodeController {
         // 患者只能查看自己的发作记录
         if ("patient".equals(userInfo.getRole())) {
             request.setPatientId(userInfo.getUserId());
+        } else if ("doctor".equals(userInfo.getRole())) {
+            request.setDoctorId(userInfo.getUserId());
         }
 
         return Result.success(diseaseEpisodeService.getList(request));
@@ -43,6 +50,8 @@ public class DiseaseEpisodeController {
      */
     @GetMapping("/patient/{patientId}")
     public Result<List<DiseaseEpisode>> listByPatient(@PathVariable Long patientId) {
+        String error = checkPatientAccess(patientId);
+        if (error != null) return Result.error(403, error);
         return Result.success(diseaseEpisodeService.getByPatientId(patientId));
     }
 
@@ -51,7 +60,10 @@ public class DiseaseEpisodeController {
      */
     @GetMapping("/{id}")
     public Result<DiseaseEpisode> getById(@PathVariable Long id) {
-        return Result.success(diseaseEpisodeService.getById(id));
+        DiseaseEpisode episode = diseaseEpisodeService.getById(id);
+        String error = checkPatientAccess(episode != null ? episode.getPatientId() : null);
+        if (error != null) return Result.error(403, error);
+        return Result.success(episode);
     }
 
     /**
@@ -64,6 +76,8 @@ public class DiseaseEpisodeController {
         if ("patient".equals(userInfo.getRole())) {
             episode.setPatientId(userInfo.getUserId());
         }
+        String error = checkPatientAccess(episode.getPatientId());
+        if (error != null) return Result.error(403, error);
         diseaseEpisodeService.save(episode);
         return Result.success(episode.getId());
     }
@@ -73,6 +87,9 @@ public class DiseaseEpisodeController {
      */
     @PutMapping("/{id}")
     public Result<Void> update(@PathVariable Long id, @RequestBody DiseaseEpisode episode) {
+        DiseaseEpisode existing = diseaseEpisodeService.getById(id);
+        String error = checkPatientAccess(existing != null ? existing.getPatientId() : episode.getPatientId());
+        if (error != null) return Result.error(403, error);
         episode.setId(id);
         diseaseEpisodeService.save(episode);
         return Result.success();
@@ -83,6 +100,9 @@ public class DiseaseEpisodeController {
      */
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
+        DiseaseEpisode existing = diseaseEpisodeService.getById(id);
+        String error = checkPatientAccess(existing != null ? existing.getPatientId() : null);
+        if (error != null) return Result.error(403, error);
         diseaseEpisodeService.delete(id);
         return Result.success();
     }
@@ -92,7 +112,19 @@ public class DiseaseEpisodeController {
      */
     @GetMapping("/count/{patientId}")
     public Result<Integer> countByPatient(@PathVariable Long patientId) {
+        String error = checkPatientAccess(patientId);
+        if (error != null) return Result.error(403, error);
         return Result.success(diseaseEpisodeService.countByPatientId(patientId));
+    }
+
+    private String checkPatientAccess(Long patientId) {
+        if (patientId == null) {
+            return "记录不存在";
+        }
+        return permissionService.checkPatientAccessPermission(
+                SecurityContextHelper.getCurrentUserId(),
+                SecurityContextHelper.getCurrentRole(),
+                patientId);
     }
 
     private UserInfo getCurrentUser() {

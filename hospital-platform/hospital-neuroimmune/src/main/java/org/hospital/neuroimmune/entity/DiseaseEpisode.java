@@ -23,8 +23,8 @@ public class DiseaseEpisode {
 
     private Integer episodeNumber;     // 发作次数（第几次发作）
 
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private LocalDateTime episodeDate; // 发作时间
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDateTime episodeDate; // 发作时间（日期型）
 
     private String chiefComplaint;     // 主诉
     private String symptoms;           // 症状
