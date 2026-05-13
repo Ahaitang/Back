@@ -1,56 +1,43 @@
 package org.hospital.common.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+import java.util.Arrays;
+import java.util.List;
 
 /**
- * CORS 跨域配置
+ * 生产环境 CORS 跨域配置
+ * 仅允许通过 CORS_ALLOWED_ORIGINS 环境变量指定的域名
  */
 @Configuration
-public class CorsConfig implements WebMvcConfigurer {
+@Profile("prod")
+public class ProdCorsConfig {
 
-    @Override
-    public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/**")
-                .allowedOriginPatterns("*")
-                .allowedHeaders("*")
-                .allowedMethods("*")
-                .allowCredentials(true)
-                .maxAge(3600)
-                .exposedHeaders("Authorization", "Content-Disposition");
-    }
+    @Value("${cors.allowed-origins}")
+    private String allowedOrigins;
 
     @Bean
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // 允许所有域名跨域
-        config.addAllowedOriginPattern("*");
+        List<String> origins = Arrays.asList(allowedOrigins.split(","));
+        origins.forEach(origin -> config.addAllowedOriginPattern(origin.trim()));
 
-        // 允许所有请求头
         config.addAllowedHeader("*");
-
-        // 允许所有请求方法
         config.addAllowedMethod("*");
-
-        // 允许携带凭证（cookies等）
         config.setAllowCredentials(true);
-
-        // 预检请求的有效期，单位为秒
         config.setMaxAge(3600L);
-
-        // 暴露的响应头
         config.addExposedHeader("Authorization");
         config.addExposedHeader("Content-Disposition");
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
-
         return new CorsFilter(source);
     }
 }

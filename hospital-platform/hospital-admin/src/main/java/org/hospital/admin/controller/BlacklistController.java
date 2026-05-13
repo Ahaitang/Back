@@ -23,9 +23,10 @@ public class BlacklistController {
     @Autowired
     private BlacklistService blacklistService;
 
-    @GetMapping("/list")
-    public Result<List<BlackList>> getBlacklist(@RequestParam(required = false) String status) {
+    @PostMapping("/list")
+    public Result<List<BlackList>> getBlacklist(@RequestBody(required = false) Map<String, String> params) {
         List<BlackList> list;
+        String status = params != null ? params.get("status") : null;
         if (status != null) {
             list = blacklistService.getAllBlacklist(status);
         } else {
@@ -34,7 +35,7 @@ public class BlacklistController {
         return Result.success(list);
     }
 
-    @GetMapping("/count")
+    @PostMapping("/count")
     public Result<Map<String, Object>> countBlacklist() {
         long activeCount = blacklistService.countActiveBlacklist();
         Map<String, Object> result = new HashMap<>();

@@ -37,5 +37,9 @@ logging:
 super-admin:
   accounts:
     - username: admin
-      password: ${SUPER_ADMIN_PASSWORD:admin123}
+      password: ${SUPER_ADMIN_PASSWORD}
       name: 超级管理员
+
+# 管理后台管理的模块列表
+admin:
+  modules: neuroimmune,qmg
