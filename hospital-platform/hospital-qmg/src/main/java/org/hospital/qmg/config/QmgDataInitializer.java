@@ -1,6 +1,7 @@
 package org.hospital.qmg.config;
 
 import lombok.extern.slf4j.Slf4j;
+import org.hospital.common.util.CredentialFileWriter;
 import org.hospital.qmg.entity.Doctor;
 import org.hospital.qmg.mapper.QmgDoctorMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,6 +62,7 @@ public class QmgDataInitializer implements CommandLineRunner {
                 doctorMapper.insert(admin);
                 log.info("✅ 成功创建默认管理员账号: username=admin, password={}, employeeNumber=EMP000001", password);
                 log.warn("⚠️ 请登录后立即修改默认密码！");
+                CredentialFileWriter.writeCredential("QMG 评分系统", "admin", password);
             } else {
                 // 检查是否需要更新工号（兼容旧数据）
                 if (existingAdmin.getEmployeeNumber() == null || existingAdmin.getEmployeeNumber().trim().isEmpty()) {

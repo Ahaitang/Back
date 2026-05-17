@@ -37,7 +37,7 @@ logging:
 super-admin:
   accounts:
     - username: admin
-      password: ${SUPER_ADMIN_PASSWORD}
+      password: ${SUPER_ADMIN_PASSWORD:}
       name: 超级管理员
 
 # 管理后台管理的模块列表
