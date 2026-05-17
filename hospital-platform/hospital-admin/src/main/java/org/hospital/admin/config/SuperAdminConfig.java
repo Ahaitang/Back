@@ -7,6 +7,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 import jakarta.annotation.PostConstruct;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.List;
 
@@ -83,6 +84,9 @@ public class SuperAdminConfig {
         if (account == null) {
             return false;
         }
-        return account.getPassword().equals(password);
+        return MessageDigest.isEqual(
+            account.getPassword().getBytes(java.nio.charset.StandardCharsets.UTF_8),
+            password.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+        );
     }
 }
