@@ -48,7 +48,15 @@ public class PatientDoctorRelationServiceImpl implements PatientDoctorRelationSe
         // 检查是否已存在相同的绑定记录（被拒绝过的可以重新申请）
         PatientDoctorRelation sameRelation = relationMapper.selectByPatientAndDoctor(patientId, doctorId);
         if (sameRelation != null) {
-            // 重新发起申请（之前可能被拒绝过）
+            // 已确认的不允许重复绑定
+            if (PatientDoctorRelation.BIND_STATUS_CONFIRMED.equals(sameRelation.getBindStatus())) {
+                throw new RuntimeException("您已绑定此医生");
+            }
+            // 待确认的不允许重复申请
+            if (PatientDoctorRelation.BIND_STATUS_PENDING.equals(sameRelation.getBindStatus())) {
+                throw new RuntimeException("您已有待审核的绑定申请，请等待医生审核");
+            }
+            // 被拒绝过的可以重新发起申请
             sameRelation.setBindStatus(PatientDoctorRelation.BIND_STATUS_PENDING);
             sameRelation.setRequestTime(LocalDateTime.now());
             sameRelation.setConfirmTime(null);
