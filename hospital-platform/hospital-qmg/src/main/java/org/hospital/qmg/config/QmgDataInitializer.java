@@ -2,12 +2,12 @@ package org.hospital.qmg.config;
 
 import lombok.extern.slf4j.Slf4j;
 import org.hospital.common.util.CredentialFileWriter;
+import org.hospital.common.util.PasswordUtil;
 import org.hospital.qmg.entity.Doctor;
 import org.hospital.qmg.mapper.QmgDoctorMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -22,8 +22,6 @@ public class QmgDataInitializer implements CommandLineRunner {
 
     @Autowired
     private QmgDoctorMapper doctorMapper;
-
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     // 从环境变量读取默认密码
     @Value("${admin.default.password:}")
@@ -54,7 +52,7 @@ public class QmgDataInitializer implements CommandLineRunner {
                 String password = (defaultPassword != null && !defaultPassword.isEmpty())
                     ? defaultPassword
                     : generateRandomPassword();
-                admin.setPassword(passwordEncoder.encode(password));
+                admin.setPassword(PasswordUtil.encode(password));
                 admin.setLevel(0); // 超级管理员
                 admin.setCreateTime(LocalDateTime.now());
                 admin.setUpdateTime(LocalDateTime.now());

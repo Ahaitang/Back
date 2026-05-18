@@ -21,7 +21,7 @@ public class SystemConfigController {
     @Autowired
     private SystemConfigService systemConfigService;
 
-    @GetMapping("/list")
+    @RequestMapping(value = "/list", method = {RequestMethod.GET, RequestMethod.POST})
     public Result<List<SystemConfig>> getConfigs() {
         List<SystemConfig> configs = systemConfigService.getAllConfigs();
         return Result.success(configs);

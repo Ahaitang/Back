@@ -24,7 +24,7 @@ public class AuditController {
     @Autowired
     private SessionAuditService auditService;
 
-    @GetMapping("/list")
+    @RequestMapping(value = "/list", method = {RequestMethod.GET, RequestMethod.POST})
     public Result<PageResult<SessionLog>> getAuditLogs(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int pageSize,
@@ -38,7 +38,7 @@ public class AuditController {
         return Result.success(PageResult.of(pageObj.getRecords(), pageObj.getTotal(), page, pageSize));
     }
 
-    @GetMapping("/stats")
+    @RequestMapping(value = "/stats", method = {RequestMethod.GET, RequestMethod.POST})
     public Result<Map<String, Object>> getAuditStats() {
         long todayOps = auditService.countTodayOperations();
         long loginCount = auditService.countTodayLogins();

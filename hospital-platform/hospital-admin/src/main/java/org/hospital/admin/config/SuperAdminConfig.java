@@ -3,11 +3,11 @@ package org.hospital.admin.config;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.hospital.common.util.CredentialFileWriter;
+import org.hospital.common.util.PasswordUtil;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 import jakarta.annotation.PostConstruct;
-import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.List;
 
@@ -38,18 +38,16 @@ public class SuperAdminConfig {
         if (accounts == null || accounts.isEmpty()) {
             return;
         }
-        boolean generated = false;
         for (Account account : accounts) {
             if (account.getPassword() == null || account.getPassword().isBlank()) {
                 String randomPassword = generateRandomPassword();
-                account.setPassword(randomPassword);
-                generated = true;
                 log.warn("超级管理员 [{}] 未设置密码，已自动生成随机密码", account.getUsername());
-            }
-        }
-        if (generated) {
-            for (Account account : accounts) {
-                CredentialFileWriter.writeCredential("超级管理员", account.getUsername(), account.getPassword());
+                CredentialFileWriter.writeCredential("超级管理员", account.getUsername(), randomPassword);
+                account.setPassword(PasswordUtil.encode(randomPassword));
+            } else {
+                // 配置文件中的明文密码，启动时转为 BCrypt hash 存储在内存中
+                String rawPassword = account.getPassword();
+                account.setPassword(PasswordUtil.encode(rawPassword));
             }
         }
     }
@@ -84,9 +82,6 @@ public class SuperAdminConfig {
         if (account == null) {
             return false;
         }
-        return MessageDigest.isEqual(
-            account.getPassword().getBytes(java.nio.charset.StandardCharsets.UTF_8),
-            password.getBytes(java.nio.charset.StandardCharsets.UTF_8)
-        );
+        return PasswordUtil.matches(password, account.getPassword());
     }
 }
