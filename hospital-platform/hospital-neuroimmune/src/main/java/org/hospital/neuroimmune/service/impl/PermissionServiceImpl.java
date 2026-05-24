@@ -145,8 +145,8 @@ public class PermissionServiceImpl implements PermissionService {
         }
 
         // 患者只能查看自己的信息
-        if ("patient".equalsIgnoreCase(role) && !userId.equals(patientId)) {
-            return "无权查看其他患者信息";
+        if ("patient".equalsIgnoreCase(role)) {
+            return userId.equals(patientId) ? null : "无权查看其他患者信息";
         }
 
         if ("doctor".equalsIgnoreCase(role)) {

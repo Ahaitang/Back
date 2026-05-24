@@ -166,6 +166,14 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
     }
 
     @Override
+    public void delete(Long id) {
+        LambdaUpdateWrapper<MedicalRecord> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(MedicalRecord::getId, id)
+                     .set(MedicalRecord::getIsDeleted, 1);
+        medicalRecordMapper.update(null, updateWrapper);
+    }
+
+    @Override
     public void deleteByPatientId(Long patientId) {
         LambdaUpdateWrapper<MedicalRecord> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(MedicalRecord::getPatientId, patientId)

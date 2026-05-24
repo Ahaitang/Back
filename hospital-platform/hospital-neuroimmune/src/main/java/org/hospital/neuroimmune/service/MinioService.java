@@ -107,7 +107,10 @@ public class MinioService {
         if (!isAvailable()) {
             return null;
         }
-        return minioConfig.getEndpoint() + "/" + minioConfig.getBucketName() + "/" + objectName;
+        String baseUrl = minioConfig.getPublicUrl() != null && !minioConfig.getPublicUrl().isEmpty()
+                ? minioConfig.getPublicUrl()
+                : minioConfig.getEndpoint();
+        return baseUrl + "/" + minioConfig.getBucketName() + "/" + objectName;
     }
 
     /**
