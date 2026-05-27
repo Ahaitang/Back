@@ -97,21 +97,19 @@ public class DashboardServiceImpl implements DashboardService {
             return new HashMap<>();
         }
 
-        // 管理员看全院数据
-        if (permissionService.isAdmin(userId)) {
-            return getAdminStats();
-        }
-
-        // 医生只看自己的数据
-        if ("doctor".equalsIgnoreCase(role)) {
-            return getDoctorStats(userId);
-        }
-
-        // 患者只看自己的数据
-        if ("patient".equalsIgnoreCase(role)) {
-            return getPatientStats(userId);
-        }
-
-        return new HashMap<>();
+        // 根据 JWT 中的角色直接路由，避免跨表 ID 冲突
+        // （患者 ID 和医生 ID 来自不同表，可能重合）
+        return switch (role != null ? role.toLowerCase() : "") {
+            case "patient" -> getPatientStats(userId);
+            case "doctor" -> {
+                // 医生可能同时拥有管理员角色
+                if (permissionService.isAdmin(userId)) {
+                    yield getAdminStats();
+                }
+                yield getDoctorStats(userId);
+            }
+            case "admin" -> getAdminStats();
+            default -> new HashMap<>();
+        };
     }
 }
