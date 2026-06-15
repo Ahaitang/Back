@@ -1,0 +1,21 @@
+# Gradle 构建产物（Docker 内重新构建）
+build/
+.gradle/
+
+# IDE 文件
+.idea/
+*.iml
+.vscode/
+
+# 日志
+logs/
+*.log
+
+# Git
+.git
+.gitignore
+
+# 其他
+*.md
+*.txt
+!settings.gradle
