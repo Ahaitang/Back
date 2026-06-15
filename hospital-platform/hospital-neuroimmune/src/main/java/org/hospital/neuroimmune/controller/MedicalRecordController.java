@@ -98,6 +98,15 @@ public class MedicalRecordController {
         return Result.success();
     }
 
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(@PathVariable Long id) {
+        MedicalRecord existing = medicalRecordService.getById(id);
+        String error = checkPatientAccess(existing != null ? existing.getPatientId() : null);
+        if (error != null) return Result.error(403, error);
+        medicalRecordService.delete(id);
+        return Result.success();
+    }
+
     private String checkPatientAccess(Long patientId) {
         if (patientId == null) {
             return "记录不存在";

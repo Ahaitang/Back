@@ -44,17 +44,21 @@ public class TokenManagementService {
             // 解析 key: token:{module}:{role}:{userId}
             String[] parts = key.split(":");
             if (parts.length >= 4) {
-                OnlineUser user = new OnlineUser();
-                user.setModule(parts[1]);
-                user.setRole(parts[2]);
-                user.setUserId(Long.parseLong(parts[3]));
-                user.setRedisKey(key);
+                try {
+                    OnlineUser user = new OnlineUser();
+                    user.setModule(parts[1]);
+                    user.setRole(parts[2]);
+                    user.setUserId(Long.parseLong(parts[3]));
+                    user.setRedisKey(key);
 
-                // 获取剩余过期时间
-                Long ttl = redisTemplate.getExpire(key, TimeUnit.SECONDS);
-                user.setTtlSeconds(ttl);
+                    // 获取剩余过期时间
+                    Long ttl = redisTemplate.getExpire(key, TimeUnit.SECONDS);
+                    user.setTtlSeconds(ttl);
 
-                users.add(user);
+                    users.add(user);
+                } catch (NumberFormatException e) {
+                    log.warn("Redis key 格式异常，跳过: {}", key);
+                }
             }
         }
 
@@ -76,16 +80,20 @@ public class TokenManagementService {
         for (String key : keys) {
             String[] parts = key.split(":");
             if (parts.length >= 4) {
-                OnlineUser user = new OnlineUser();
-                user.setModule(parts[1]);
-                user.setRole(parts[2]);
-                user.setUserId(Long.parseLong(parts[3]));
-                user.setRedisKey(key);
+                try {
+                    OnlineUser user = new OnlineUser();
+                    user.setModule(parts[1]);
+                    user.setRole(parts[2]);
+                    user.setUserId(Long.parseLong(parts[3]));
+                    user.setRedisKey(key);
 
-                Long ttl = redisTemplate.getExpire(key, TimeUnit.SECONDS);
-                user.setTtlSeconds(ttl);
+                    Long ttl = redisTemplate.getExpire(key, TimeUnit.SECONDS);
+                    user.setTtlSeconds(ttl);
 
-                users.add(user);
+                    users.add(user);
+                } catch (NumberFormatException e) {
+                    log.warn("Redis key 格式异常，跳过: {}", key);
+                }
             }
         }
 

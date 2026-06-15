@@ -15,5 +15,6 @@ public interface MedicalRecordService {
     void cancel(Long id);
     Long countByPatientId(Long patientId);
     Long countByDoctorId(Long doctorId);
+    void delete(Long id);
     void deleteByPatientId(Long patientId);
 }

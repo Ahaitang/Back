@@ -4,6 +4,7 @@ import org.hospital.neuroimmune.entity.Doctor;
 import org.hospital.neuroimmune.mapper.NeuroimmuneDoctorMapper;
 import org.hospital.neuroimmune.service.DoctorRoleService;
 import org.hospital.common.util.PasswordUtil;
+import org.hospital.common.util.CredentialFileWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,6 +52,7 @@ public class NeuroimmuneDataInitializer implements CommandLineRunner {
                 doctorRoleService.addRoleToDoctor(admin.getId(), "ADMIN");
                 logger.info("已自动创建默认管理员账号: admin / {}", password);
                 logger.warn("请登录后立即修改默认密码！");
+                CredentialFileWriter.writeCredential("神经免疫系统", "admin", password);
             } else {
                 logger.info("管理员账号已存在");
             }

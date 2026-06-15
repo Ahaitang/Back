@@ -98,6 +98,9 @@ Thumbs.db
 # Database
 *.db
 *.sqlite
+
+# 自动生成的凭证文件
+user.txt
 *.sqlite3
 
 # Application specific

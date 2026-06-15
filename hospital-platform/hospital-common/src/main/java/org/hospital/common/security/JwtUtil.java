@@ -7,6 +7,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import jakarta.annotation.PostConstruct;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
@@ -30,15 +33,15 @@ public class JwtUtil {
 
     @PostConstruct
     public void init() {
-        // 确保密钥长度足够（HS256 需要 256 位）
-        byte[] keyBytes = secret.getBytes();
-        if (keyBytes.length < 32) {
-            // 填充到 32 字节
-            byte[] padded = new byte[32];
-            System.arraycopy(keyBytes, 0, padded, 0, keyBytes.length);
-            keyBytes = padded;
+        // 使用 HMAC-SHA256 对原始密钥进行派生，确保输出固定 32 字节且安全
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec("jwt-key-derive".getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            byte[] keyBytes = mac.doFinal(secret.getBytes(StandardCharsets.UTF_8));
+            this.key = Keys.hmacShaKeyFor(keyBytes);
+        } catch (Exception e) {
+            throw new IllegalStateException("JWT 密钥初始化失败", e);
         }
-        this.key = Keys.hmacShaKeyFor(keyBytes);
     }
 
     /**

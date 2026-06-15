@@ -104,8 +104,6 @@ hospital-platform/
 │       └── log4j2-spring.xml      # Log4j2 日志配置
 │
 ├── build.gradle              # 根构建脚本
-├── Dockerfile                # Docker 镜像构建
-├── docker-compose.yaml       # 服务编排
 └── .env.example              # 环境变量示例
 ```
 
@@ -708,33 +706,6 @@ TTL:   24 小时（可配置）
 
 ## 部署指南
 
-### Docker Compose 部署
-
-1. **复制环境变量**
-
-```bash
-cp .env.example .env
-# 编辑 .env 填入实际配置
-```
-
-2. **启动服务**
-
-```bash
-docker-compose up -d
-```
-
-**启动顺序**：
-1. MySQL（健康检查通过）
-2. Redis（健康检查通过）
-3. MinIO
-4. Hospital Platform 应用
-
-3. **查看日志**
-
-```bash
-docker-compose logs -f app
-```
-
 ### 服务端口
 
 | 服务 | 端口 |
@@ -744,14 +715,6 @@ docker-compose logs -f app
 | Redis | 6379 |
 | MinIO API | 9100 |
 | MinIO Console | 9101 |
-
-### 数据持久化
-
-Docker Compose 创建以下数据卷：
-
-- `hospital_mysql_data` - MySQL 数据
-- `hospital_redis_data` - Redis 数据
-- `hospital_minio_data` - MinIO 文件存储
 
 ---
 

@@ -21,6 +21,7 @@ public class MinioConfig {
     private String accessKey;
     private String secretKey;
     private String bucketName;
+    private String publicUrl;
 
     @Bean
     @ConditionalOnProperty(prefix = "minio", name = {"access-key", "secret-key"})

@@ -1,11 +1,11 @@
 package org.hospital.qmg.service.impl;
 
 import lombok.extern.slf4j.Slf4j;
+import org.hospital.common.util.PasswordUtil;
 import org.hospital.qmg.entity.Doctor;
 import org.hospital.qmg.mapper.QmgDoctorMapper;
 import org.hospital.qmg.service.DoctorService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -20,8 +20,6 @@ public class DoctorServiceImpl implements DoctorService {
 
     @Autowired
     private QmgDoctorMapper doctorMapper;
-
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Override
     public Doctor findByUsername(String username) {
@@ -52,7 +50,7 @@ public class DoctorServiceImpl implements DoctorService {
         }
 
         // 验证密码
-        boolean passwordMatches = passwordEncoder.matches(password, doctor.getPassword());
+        boolean passwordMatches = PasswordUtil.matches(password, doctor.getPassword());
         log.debug("密码验证结果: username={}, matches={}, storedPasswordLength={}", 
             username, passwordMatches, doctor.getPassword() != null ? doctor.getPassword().length() : 0);
         
@@ -72,7 +70,7 @@ public class DoctorServiceImpl implements DoctorService {
     public void save(Doctor doctor) {
         log.info("新增医生: {}", doctor.getUsername());
         // 加密密码
-        String encodedPassword = passwordEncoder.encode(doctor.getPassword());
+        String encodedPassword = PasswordUtil.encode(doctor.getPassword());
         doctor.setPassword(encodedPassword);
         // 如果没有设置权限等级，默认为2（普通医生）
         if (doctor.getLevel() == null) {
@@ -88,7 +86,7 @@ public class DoctorServiceImpl implements DoctorService {
         log.info("更新医生信息: {}", doctor.getUsername());
         // 仅当传入新密码（明文）时才加密并更新；为 null 表示不修改密码，Mapper 会跳过 password 列
         if (doctor.getPassword() != null && !doctor.getPassword().isEmpty()) {
-            String encodedPassword = passwordEncoder.encode(doctor.getPassword());
+            String encodedPassword = PasswordUtil.encode(doctor.getPassword());
             doctor.setPassword(encodedPassword);
         }
         doctor.setUpdateTime(LocalDateTime.now());
@@ -105,7 +103,7 @@ public class DoctorServiceImpl implements DoctorService {
         for (Doctor doctor : doctors) {
             if (doctor.getPassword() != null && !doctor.getPassword().isEmpty()) {
                 String originalPassword = doctor.getPassword();
-                String encodedPassword = passwordEncoder.encode(originalPassword);
+                String encodedPassword = PasswordUtil.encode(originalPassword);
                 doctor.setPassword(encodedPassword);
                 log.debug("医生密码已加密: username={}, employeeNumber={}, 原始密码长度={}, 加密后长度={}", 
                     doctor.getUsername(), doctor.getEmployeeNumber(), 

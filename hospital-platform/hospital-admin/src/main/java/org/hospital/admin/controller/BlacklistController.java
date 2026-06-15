@@ -35,7 +35,7 @@ public class BlacklistController {
         return Result.success(list);
     }
 
-    @PostMapping("/count")
+    @RequestMapping(value = "/count", method = {RequestMethod.GET, RequestMethod.POST})
     public Result<Map<String, Object>> countBlacklist() {
         long activeCount = blacklistService.countActiveBlacklist();
         Map<String, Object> result = new HashMap<>();

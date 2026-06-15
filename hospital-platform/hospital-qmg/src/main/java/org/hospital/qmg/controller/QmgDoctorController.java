@@ -97,7 +97,7 @@ public class QmgDoctorController {
             }
         } catch (Exception e) {
             log.error("医生登录异常: username={}, error={}", username, e.getMessage(), e);
-            return Result.error("登录失败：" + e.getMessage());
+            return Result.error("登录失败，请稍后重试");
         }
     }
 

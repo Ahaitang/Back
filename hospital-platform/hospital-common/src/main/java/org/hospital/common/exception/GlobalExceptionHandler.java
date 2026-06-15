@@ -5,6 +5,7 @@ import org.hospital.common.model.Result;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -87,6 +88,16 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 处理HTTP方法不支持异常
+     */
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    @ResponseStatus(HttpStatus.METHOD_NOT_ALLOWED)
+    public Result<Void> handleMethodNotSupportedException(HttpRequestMethodNotSupportedException e) {
+        log.warn("HTTP方法不支持: {}", e.getMessage());
+        return Result.error(405, "不支持的请求方法: " + e.getMethod());
+    }
+
+    /**
      * 处理空指针异常
      */
     @ExceptionHandler(NullPointerException.class)
@@ -112,7 +123,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RuntimeException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Result<Void> handleRuntimeException(RuntimeException e) {
-        log.error("运行时异常: ", e);
+        log.error("运行时异常: [{}] {}", e.getClass().getName(), e.getMessage(), e);
         return Result.error(ErrorCode.INTERNAL_ERROR.getCode(), "系统错误: " + e.getMessage());
     }
 
@@ -122,7 +133,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Result<Void> handleException(Exception e) {
-        log.error("未知异常: ", e);
+        log.error("未知异常: [{}] {}", e.getClass().getName(), e.getMessage(), e);
         return Result.error(ErrorCode.INTERNAL_ERROR.getCode(), "系统内部错误: " + e.getMessage());
     }
 }

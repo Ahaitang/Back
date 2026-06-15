@@ -65,6 +65,10 @@ public class AuthController {
     @AuditLog(operation = OperationType.LOGOUT, module = "认证", description = "用户登出")
     @PostMapping("/logout")
     public Result<Void> logout() {
+        UserInfo user = SecurityContextHelper.getCurrentUser();
+        if (user != null) {
+            tokenStorage.removeToken(user);
+        }
         return Result.success();
     }
 

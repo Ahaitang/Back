@@ -39,7 +39,7 @@ public class OnlineUserController {
         return Arrays.asList(modulesConfig.split(","));
     }
 
-    @GetMapping("/list")
+    @RequestMapping(value = "/list", method = {RequestMethod.GET, RequestMethod.POST})
     public Result<List<OnlineUser>> getOnlineUsers(
             @RequestParam(required = false) String module,
             @RequestParam(required = false) String role) {

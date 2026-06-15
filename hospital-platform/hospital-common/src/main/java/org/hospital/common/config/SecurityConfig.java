@@ -45,6 +45,7 @@ public class SecurityConfig {
             "/api/v1/neuroimmune/relation/doctors",
             "/api/v1/neuroimmune/import/*/template",
             "/api/v1/super-admin/login",
+            "/ws/**",
             "/actuator/health",
             "/actuator/info"
         ));

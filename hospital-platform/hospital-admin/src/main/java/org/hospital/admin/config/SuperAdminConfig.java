@@ -1,8 +1,14 @@
 package org.hospital.admin.config;
 
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
+import org.hospital.common.util.CredentialFileWriter;
+import org.hospital.common.util.PasswordUtil;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
+
+import jakarta.annotation.PostConstruct;
+import java.security.SecureRandom;
 import java.util.List;
 
 /**
@@ -10,9 +16,13 @@ import java.util.List;
  * 从 application.yaml 读取超级管理员账号列表
  */
 @Data
+@Slf4j
 @Component
 @ConfigurationProperties(prefix = "super-admin")
 public class SuperAdminConfig {
+
+    private static final String CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    private static final int PASSWORD_LENGTH = 16;
 
     private List<Account> accounts;
 
@@ -21,6 +31,34 @@ public class SuperAdminConfig {
         private String username;
         private String password;
         private String name;
+    }
+
+    @PostConstruct
+    public void init() {
+        if (accounts == null || accounts.isEmpty()) {
+            return;
+        }
+        for (Account account : accounts) {
+            if (account.getPassword() == null || account.getPassword().isBlank()) {
+                String randomPassword = generateRandomPassword();
+                log.warn("超级管理员 [{}] 未设置密码，已自动生成随机密码", account.getUsername());
+                CredentialFileWriter.writeCredential("超级管理员", account.getUsername(), randomPassword);
+                account.setPassword(PasswordUtil.encode(randomPassword));
+            } else {
+                // 配置文件中的明文密码，启动时转为 BCrypt hash 存储在内存中
+                String rawPassword = account.getPassword();
+                account.setPassword(PasswordUtil.encode(rawPassword));
+            }
+        }
+    }
+
+    private String generateRandomPassword() {
+        SecureRandom random = new SecureRandom();
+        StringBuilder sb = new StringBuilder(PASSWORD_LENGTH);
+        for (int i = 0; i < PASSWORD_LENGTH; i++) {
+            sb.append(CHARS.charAt(random.nextInt(CHARS.length())));
+        }
+        return sb.toString();
     }
 
     /**
@@ -44,6 +82,6 @@ public class SuperAdminConfig {
         if (account == null) {
             return false;
         }
-        return account.getPassword().equals(password);
+        return PasswordUtil.matches(password, account.getPassword());
     }
 }
